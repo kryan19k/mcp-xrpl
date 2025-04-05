@@ -28,7 +28,6 @@ import "./transactions/amm/create.js";
 import "./transactions/amm/deposit.js";
 import "./transactions/amm/delete.js";
 import "./transactions/amm/vote.js";
-import "./transactions/amm/info.js";
 import "./transactions/amm/clawback.js";
 import "./transactions/check/cancel.js";
 import "./transactions/check/cash.js";
