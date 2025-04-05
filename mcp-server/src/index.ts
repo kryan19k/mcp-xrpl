@@ -21,6 +21,7 @@ import "./transactions/did/update.js";
 import "./transactions/did/deactivate.js";
 import "./transactions/amm/bid.js";
 import "./transactions/amm/create.js";
+import "./transactions/amm/deposit.js";
 import "./transactions/amm/delete.js";
 import "./transactions/amm/vote.js";
 import "./transactions/amm/info.js";
@@ -39,6 +40,7 @@ import "./transactions/escrow/cancel.js";
 import "./transactions/escrow/create.js";
 import "./transactions/escrow/finish.js";
 import "./transactions/trust/setTrustline.js";
+import "./transactions/ticketCreate.js";
 
 // Start the server
 async function main() {
