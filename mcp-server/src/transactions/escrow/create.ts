@@ -139,7 +139,10 @@ server.tool(
                 // Extract OfferSequence from metadata if successful
                 if (status === "success" && result.result.meta.AffectedNodes) {
                     for (const node of result.result.meta.AffectedNodes) {
-                        if (node.CreatedNode?.LedgerEntryType === "Escrow") {
+                        if (
+                            "CreatedNode" in node &&
+                            node.CreatedNode?.LedgerEntryType === "Escrow"
+                        ) {
                             offerSequence = (node.CreatedNode.NewFields as any)
                                 ?.Sequence;
                             break;
