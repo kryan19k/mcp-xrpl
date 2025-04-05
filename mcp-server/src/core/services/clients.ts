@@ -1,5 +1,5 @@
 import { Client } from "xrpl";
-import { MAINNET_URL, TESTNET_URL } from "../constants";
+import { MAINNET_URL, TESTNET_URL } from "../constants.js";
 
 // Helper function for XRPL client connection
 export async function getXrplClient(useTestnet = false): Promise<Client> {

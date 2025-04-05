@@ -9,3 +9,8 @@ export const server = new McpServer({
         tools: {},
     },
 });
+
+// Default export function that returns the server instance
+export default async function startServer() {
+    return server;
+}

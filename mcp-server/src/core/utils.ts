@@ -1,5 +1,5 @@
 import { Client, Wallet } from "xrpl";
-import { DID_PREFIX } from "./constants";
+import { DID_PREFIX } from "./constants.js";
 
 // Helper function to create DID document for an account
 export function createDIDDocument(
