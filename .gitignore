@@ -2,4 +2,3 @@ mcp-client/.env
 mcp-server/.env
 mcp-client/node_modules
 mcp-server/node_modules
-
