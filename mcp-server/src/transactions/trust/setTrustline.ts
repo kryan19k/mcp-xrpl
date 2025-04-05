@@ -117,29 +117,30 @@ server.tool(
             }
 
             // Adjust flags based on boolean options
-            let flags = trustSetTx.Flags || 0;
+            let flags: number = trustSetTx.Flags ? Number(trustSetTx.Flags) : 0;
+
             if (noRipple === false) {
                 // Clear NoRipple flag if explicitly set to false
-                flags &= ~TrustSetFlags.tfSetNoRipple;
+                flags = flags & ~TrustSetFlags.tfSetNoRipple;
             } else if (
                 noRipple === true &&
                 !(flags & TrustSetFlags.tfSetNoRipple)
             ) {
                 // Set NoRipple if explicitly true and not already set (though it's default)
-                flags |= TrustSetFlags.tfSetNoRipple;
+                flags = flags | TrustSetFlags.tfSetNoRipple;
             }
 
             // Note: Setting tfClearNoRipple is usually done by clearing the flag bit
 
             if (freeze === true) {
-                flags |= TrustSetFlags.tfSetFreeze;
+                flags = flags | TrustSetFlags.tfSetFreeze;
             }
             if (freeze === false) {
-                flags |= TrustSetFlags.tfClearFreeze;
+                flags = flags | TrustSetFlags.tfClearFreeze;
             }
 
             if (auth === true) {
-                flags |= TrustSetFlags.tfSetfAuth;
+                flags = flags | TrustSetFlags.tfSetfAuth;
             } // No tfClearAuth equivalent, clearing requires different tx or issuer action
 
             trustSetTx.Flags = flags;

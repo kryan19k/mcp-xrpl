@@ -123,8 +123,10 @@ server.tool(
             }
 
             // Format amounts
-            const formatAmount = (amt: any) => {
-                if (!amt) return undefined; // Should not happen as amounts are required
+            const formatAmount = (amt: any): xrpl.Amount => {
+                if (!amt) {
+                    throw new Error("Amount is required");
+                }
                 if (amt.currency === "XRP") {
                     return xrpl.xrpToDrops(amt.value);
                 } else {
@@ -186,9 +188,13 @@ server.tool(
                 // Extract OfferSequence from metadata if successful and an offer was created
                 if (status === "success" && result.result.meta.AffectedNodes) {
                     for (const node of result.result.meta.AffectedNodes) {
-                        if (node.CreatedNode?.LedgerEntryType === "Offer") {
+                        const createdNode =
+                            "CreatedNode" in node
+                                ? node.CreatedNode
+                                : undefined;
+                        if (createdNode?.LedgerEntryType === "Offer") {
                             createdOfferSequence = (
-                                node.CreatedNode.NewFields as any
+                                createdNode.NewFields as any
                             )?.Sequence;
                             break;
                         }
