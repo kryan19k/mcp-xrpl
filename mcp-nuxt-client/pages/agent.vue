@@ -131,7 +131,7 @@ const sendMessage = async () => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Accept: "text/event-stream", // Expect stream
+                Accept: "text/event-stream, application/json", // Accept both stream and JSON
             },
             body: JSON.stringify({
                 query: userQuery,
@@ -150,120 +150,153 @@ const sendMessage = async () => {
             throw new Error(errorMsg);
         }
 
-        if (
-            !response.body ||
-            !response.headers.get("content-type")?.includes("text/event-stream")
-        ) {
-            throw new Error(
-                "Expected a stream but received a different content type from /api/chat."
-            );
-        }
+        // Check if response is a stream or standard JSON
+        const contentType = response.headers.get("content-type") || "";
 
-        // --- Process the initial stream from /api/chat ---
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let currentAssistantContent = "";
+        // Handle JSON response (non-streaming)
+        if (contentType.includes("application/json")) {
+            const data = await response.json();
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-                initialStreamEnded = true; // Mark that stream ended normally
-                break;
+            if (data.error) {
+                throw new Error(data.error);
             }
 
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split("\n");
-            for (const line of lines) {
-                if (line.startsWith("data: ")) {
-                    const jsonData = line.substring(6);
-                    try {
-                        const eventData = JSON.parse(jsonData);
+            // Handle regular response with content
+            if (data.content) {
+                chatHistory.value[tempAssistantMessageIndex].content =
+                    data.content;
+            }
+            // Handle response with complete history
+            else if (data.history) {
+                chatHistory.value = data.history
+                    .filter(
+                        (msg: any) =>
+                            (msg.role === "user" || msg.role === "assistant") &&
+                            typeof msg.content === "string"
+                    )
+                    .map((msg: any) => ({
+                        role: msg.role,
+                        content: msg.content,
+                    }));
+            }
 
-                        if (eventData.type === "chunk") {
-                            currentAssistantContent += eventData.content;
-                            chatHistory.value[
-                                tempAssistantMessageIndex
-                            ].content = currentAssistantContent;
-                            scrollToBottom();
-                        } else if (eventData.type === "confirm") {
-                            // Single message confirmation handling
-                            console.log(
-                                "Confirmation requested:",
-                                eventData.details
-                            );
-                            toolToConfirmDetails.value = eventData.details;
-                            confirmationComplete.value = true;
+            initialStreamEnded = true;
+            scrollToBottom();
+            return;
+        }
 
-                            // Set confirmation text directly from the details
-                            streamingConfirmation.value =
-                                eventData.details.confirmationText ||
-                                `Are you sure you want to proceed with ${
-                                    eventData.details.name || "this operation"
-                                }?`;
+        // Handle streaming response (existing code)
+        if (response.body && contentType.includes("text/event-stream")) {
+            // --- Process the initial stream from /api/chat ---
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let currentAssistantContent = "";
 
-                            // Update assistant message content
-                            chatHistory.value[
-                                tempAssistantMessageIndex
-                            ].content = currentAssistantContent;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    initialStreamEnded = true; // Mark that stream ended normally
+                    break;
+                }
 
-                            // Show confirmation modal
-                            showConfirmationModal.value = true;
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split("\n");
+                for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                        const jsonData = line.substring(6);
+                        try {
+                            const eventData = JSON.parse(jsonData);
 
-                            // Stop stream processing
-                            await reader.cancel();
-                            initialStreamEnded = false;
-                            break;
-                        } else if (eventData.type === "history") {
-                            // Final history received (no tool confirmation occurred)
-                            console.log(
-                                "Received final history from initial stream."
-                            );
-                            chatHistory.value = eventData.content
-                                .filter(
-                                    (msg: any) =>
-                                        (msg.role === "user" ||
-                                            msg.role === "assistant") &&
-                                        typeof msg.content === "string"
-                                )
-                                .map((msg: any) => ({
-                                    role: msg.role,
-                                    content: msg.content,
-                                }));
-                            initialStreamEnded = true;
-                            await reader.cancel(); // Done with stream
-                            break; // Exit inner loop
-                        } else if (eventData.type === "error") {
+                            if (eventData.type === "chunk") {
+                                currentAssistantContent += eventData.content;
+                                chatHistory.value[
+                                    tempAssistantMessageIndex
+                                ].content = currentAssistantContent;
+                                scrollToBottom();
+                            } else if (eventData.type === "confirm") {
+                                // Single message confirmation handling
+                                console.log(
+                                    "Confirmation requested:",
+                                    eventData.details
+                                );
+                                toolToConfirmDetails.value = eventData.details;
+                                confirmationComplete.value = true;
+
+                                // Set confirmation text directly from the details
+                                streamingConfirmation.value =
+                                    eventData.details.confirmationText ||
+                                    `Are you sure you want to proceed with ${
+                                        eventData.details.name ||
+                                        "this operation"
+                                    }?`;
+
+                                // Update assistant message content
+                                chatHistory.value[
+                                    tempAssistantMessageIndex
+                                ].content = currentAssistantContent;
+
+                                // Show confirmation modal
+                                showConfirmationModal.value = true;
+
+                                // Stop stream processing
+                                await reader.cancel();
+                                initialStreamEnded = false;
+                                break;
+                            } else if (eventData.type === "history") {
+                                // Final history received (no tool confirmation occurred)
+                                console.log(
+                                    "Received final history from initial stream."
+                                );
+                                chatHistory.value = eventData.content
+                                    .filter(
+                                        (msg: any) =>
+                                            (msg.role === "user" ||
+                                                msg.role === "assistant") &&
+                                            typeof msg.content === "string"
+                                    )
+                                    .map((msg: any) => ({
+                                        role: msg.role,
+                                        content: msg.content,
+                                    }));
+                                initialStreamEnded = true;
+                                await reader.cancel(); // Done with stream
+                                break; // Exit inner loop
+                            } else if (eventData.type === "error") {
+                                console.error(
+                                    "Received error event from initial stream:",
+                                    eventData.content
+                                );
+                                error.value = eventData.content;
+                                chatHistory.value[
+                                    tempAssistantMessageIndex
+                                ].content += `\n[Stream Error: ${eventData.content}]`;
+                                await reader.cancel();
+                                initialStreamEnded = false;
+                                break; // Exit inner loop
+                            }
+                        } catch (e) {
                             console.error(
-                                "Received error event from initial stream:",
-                                eventData.content
+                                "Failed to parse initial stream data:",
+                                jsonData,
+                                e
                             );
-                            error.value = eventData.content;
-                            chatHistory.value[
-                                tempAssistantMessageIndex
-                            ].content += `\n[Stream Error: ${eventData.content}]`;
-                            await reader.cancel();
-                            initialStreamEnded = false;
-                            break; // Exit inner loop
                         }
-                    } catch (e) {
-                        console.error(
-                            "Failed to parse initial stream data:",
-                            jsonData,
-                            e
-                        );
                     }
                 }
+                // Check if we need to break outer loop (e.g., after confirm event)
+                if (
+                    showConfirmationModal.value ||
+                    error.value ||
+                    initialStreamEnded
+                )
+                    break;
             }
-            // Check if we need to break outer loop (e.g., after confirm event)
-            if (
-                showConfirmationModal.value ||
-                error.value ||
-                initialStreamEnded
-            )
-                break;
+            // End of while loop
+            console.log("Initial stream processing finished.");
+        } else {
+            // Unexpected content type
+            throw new Error(`Unexpected response format: ${contentType}`);
         }
-        // End of while loop
-        console.log("Initial stream processing finished.");
     } catch (err: any) {
         // Add detailed logging
         console.error(
@@ -505,8 +538,14 @@ const handleCancel = () => {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 h1 {
@@ -538,23 +577,25 @@ h1 {
 }
 
 .chat-window::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, 
-        rgba(99, 102, 241, 0.03) 0%, 
-        rgba(99, 102, 241, 0.01) 50%, 
-        rgba(139, 92, 246, 0.03) 100%);
+    background: linear-gradient(
+        135deg,
+        rgba(99, 102, 241, 0.03) 0%,
+        rgba(99, 102, 241, 0.01) 50%,
+        rgba(139, 92, 246, 0.03) 100%
+    );
     opacity: 0.7;
     pointer-events: none;
     z-index: -1;
 }
 
 .chat-window::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -770,7 +811,8 @@ h1 {
     margin-top: var(--space-6);
 }
 
-.confirm-button, .cancel-button {
+.confirm-button,
+.cancel-button {
     padding: var(--space-2) var(--space-5);
     border-radius: var(--border-radius);
     font-weight: 600;
@@ -780,7 +822,11 @@ h1 {
 }
 
 .confirm-button {
-    background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+    background: linear-gradient(
+        135deg,
+        var(--success) 0%,
+        var(--success-dark) 100%
+    );
     color: white;
     border: none;
 }
@@ -813,7 +859,7 @@ h1 {
         padding: var(--space-2);
         height: 100vh;
     }
-    
+
     .message {
         max-width: 95%;
     }
