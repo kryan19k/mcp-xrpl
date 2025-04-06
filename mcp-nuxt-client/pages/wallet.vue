@@ -68,7 +68,6 @@
       </div>
     
       <!-- AI Assistant Card -->
-      <!-- AI Assistant Card -->
       <div class="faucet-card dashboard-card">
         <div class="card-header">
           <h3><span class="card-icon">🤖</span> AI Assistant</h3>
@@ -77,7 +76,6 @@
           <div class="faucet-icon">🧠</div>
           <div class="faucet-details">
             <p>Your account is connected to our <strong>MCP-enabled AI agent</strong> that optimizes your transactions.</p>
-            <p class="faucet-note">Initial balance of <strong>{{ userWallet.initialBalance }} XRP</strong> has been allocated to your account from TestNet.</p>
             <button @click="navigateTo('/agent')" class="ai-chat-button">
               <span class="button-icon">💬</span>
               <span>Chat with AI Agent</span>
@@ -85,31 +83,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Banking Actions -->
-      <div class="wallet-actions">
-        <button @click="refreshBalance" class="primary-button">
-          <span class="button-icon">🔄</span>
-          <span>Update Account</span>
-          <span class="button-shine"></span>
-        </button>
-        <button @click="navigateTo('/')" class="secondary-button">
-          <span class="button-icon">🏠</span>
-          <span>Back to Home</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Error state -->
-    <div v-else-if="step === 'error'" class="error-card">
-      <div class="error-icon">⚠️</div>
-      <h2 class="text-error">Error</h2>
-      <p>{{ errorMessage }}</p>
-      <button @click="step = 'auth'" class="secondary-button">
-        <span class="button-icon">↩️</span>
-        <span>Try Again</span>
-        <span class="button-shine"></span>
-      </button>
     </div>
   </div>
 </template>
@@ -136,13 +109,6 @@ const lastRefreshed = ref('-');
 const faucetMessage = ref('');
 const faucetError = ref(false);
 
-// Real transactions for display
-const transactions = ref([]);
-
-// Formatted transactions for display
-const realTransactions = computed(() => {
-  return transactions.value.slice(0, 5); // Show only last 5 transactions
-});
 
 // WebAuthn client
 let client = null;
@@ -176,41 +142,6 @@ onMounted(async () => {
     loading.value = false;
   }
 });
-
-// Charger la seed à partir du fichier .env
-async function loadSeedFromEnv() {
-  try {
-    const response = await fetch('/api/loadSeed', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        requestDefaultSeed: true
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Impossible de charger la seed depuis le fichier .env');
-    }
-
-    const data = await response.json();
-    
-    if (data.seed) {
-      // Mettre à jour les données utilisateur locales
-      userWallet.value.xrplSeed = data.seed;
-      localStorage.setItem('webauthn_user', JSON.stringify(userWallet.value));
-      
-      // Se connecter à XRPL
-      await connectToXRPL(data.seed);
-    } else {
-      throw new Error('Aucune seed trouvée dans le fichier .env');
-    }
-  } catch (error) {
-    console.error('Erreur lors du chargement de la seed :', error);
-    errorMessage.value = error.message || 'Une erreur est survenue lors du chargement de la seed';
-  }
-}
 
 // Connexion au réseau XRPL
 async function connectToXRPL(seed) {
@@ -259,18 +190,6 @@ async function connectToXRPL(seed) {
   } finally {
     loading.value = false;
   }
-}
-
-// Function to format dates
-function formatDate(date) {
-  if (!date) return '';
-  const d = new Date(date);
-  return d.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
 }
 
 // Function to authenticate
