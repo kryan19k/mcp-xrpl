@@ -64,6 +64,54 @@ async function getMcpClient(serverScriptPath: string): Promise<Client> {
     return mcpClientInstance;
 }
 
+// Utility function to extract transaction hash from tool result
+function extractTransactionHash(result: any): string | null {
+    // If result is already an object (not a string)
+    if (
+        typeof result !== "string" &&
+        result !== null &&
+        typeof result === "object"
+    ) {
+        // It could be an array of objects with text property
+        if (Array.isArray(result)) {
+            for (const item of result) {
+                if (item?.text && typeof item.text === "string") {
+                    const hashFromText = extractHashFromString(item.text);
+                    if (hashFromText) return hashFromText;
+                }
+                // It might contain a hash property directly
+                if (item?.hash) return item.hash;
+                if (item?.transaction_hash) return item.transaction_hash;
+                if (item?.txHash) return item.txHash;
+            }
+            return null;
+        }
+
+        // Check for common hash property names in the object
+        return result.hash || result.transaction_hash || result.txHash || null;
+    }
+
+    // Handle string input (either JSON or plain text)
+    return extractHashFromString(result);
+}
+
+// Helper to extract hash from string content
+function extractHashFromString(text: string): string | null {
+    if (!text) return null;
+
+    try {
+        // Try to parse as JSON first
+        const parsed = JSON.parse(text);
+        return extractTransactionHash(parsed);
+    } catch {
+        // If not JSON, try regex patterns
+        // Common hash format in text (64 hex chars)
+        const hashRegex = /hash['":\s]+([0-9A-Fa-f]{64})/i;
+        const match = text.match(hashRegex);
+        return match ? match[1] : null;
+    }
+}
+
 // --- Anthropic Client ---
 let anthropic: Anthropic | null = null; // Initialize as null
 
@@ -129,10 +177,25 @@ export default defineEventHandler(async (event) => {
         // Consider sending an error event through the stream if needed later
     }
 
+    // Process the tool result content to ensure it's properly formatted for Anthropic
+    let processedContent: any = toolResultContent;
+    // If it looks like a JSON string, try to parse it
+    if (
+        typeof toolResultContent === "string" &&
+        (toolResultContent.startsWith("[") || toolResultContent.startsWith("{"))
+    ) {
+        try {
+            processedContent = JSON.parse(toolResultContent);
+        } catch (e) {
+            console.log("Failed to parse tool result as JSON, using as string");
+            // Keep as string if parsing fails
+        }
+    }
+
     const toolResultBlock: ToolResultBlockParam = {
         type: "tool_result",
         tool_use_id,
-        content: toolResultContent,
+        content: processedContent,
         is_error: isErrorResult || undefined,
     };
 
@@ -163,6 +226,20 @@ export default defineEventHandler(async (event) => {
             async start(controller) {
                 let fullResponseText = ""; // Keep track for history
                 try {
+                    // Extract transaction hash from tool result before streaming
+                    const transactionHash =
+                        extractTransactionHash(toolResultContent) || "N/A";
+
+                    // Add hash notice at the beginning
+                    const hashPrefix = `Transaction hash: ${transactionHash}\n\n`;
+                    controller.enqueue(
+                        `data: ${JSON.stringify({
+                            type: "chunk",
+                            content: hashPrefix,
+                        })}\n\n`
+                    );
+                    fullResponseText += hashPrefix;
+
                     for await (const event of stream) {
                         if (
                             event.type === "content_block_delta" &&

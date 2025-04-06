@@ -14,7 +14,17 @@
                 <pre class="content">{{ msg.content }}</pre>
             </div>
             <div v-if="isLoading" class="message message-loading">
-                <span>Thinking...</span>
+                <span
+                    v-if="
+                        chatHistory.length > 0 &&
+                        chatHistory[chatHistory.length - 1].role ===
+                            'assistant' &&
+                        chatHistory[chatHistory.length - 1].content
+                    "
+                >
+                    {{ chatHistory[chatHistory.length - 1].content }}
+                </span>
+                <span v-else>Thinking...</span>
             </div>
             <div v-if="error" class="message message-error">
                 <span>Error: {{ error }}</span>
@@ -38,8 +48,23 @@
     <div v-if="showConfirmationModal" class="modal-overlay">
         <div class="modal-content">
             <h3>Confirm Tool Execution</h3>
-            <p>{{ toolToConfirmDetails.name }}</p>
-            <pre>{{ toolToConfirmDetails.initialAssistantText }}</pre>
+
+            <div class="tool-details">
+                <h4>Tool: {{ toolToConfirmDetails?.name || "Loading..." }}</h4>
+            </div>
+
+            <!-- Enhanced confirmation message box -->
+            <div class="confirmation-container">
+                <h4>Confirmation:</h4>
+                <div class="confirmation-message">
+                    <pre
+                        class="confirmation-text"
+                        style="border: 1px dashed #ccc; padding: 8px"
+                        >{{ streamingConfirmation }}</pre
+                    >
+                </div>
+            </div>
+
             <div class="modal-buttons">
                 <button @click="handleConfirm" class="confirm-button">
                     Confirm
@@ -72,6 +97,9 @@ const chatWindow = ref<HTMLElement | null>(null);
 // --- State for Confirmation Modal ---
 const showConfirmationModal = ref(false);
 const toolToConfirmDetails = ref<any>(null); // Store details for the modal
+const streamingConfirmation = ref(""); // Track streaming confirmation message
+const confirmationComplete = ref(false); // Track if confirmation is complete
+let initialStreamEnded = false; // Flag to know if initial stream closed normally or for confirmation
 
 // --- Scroll Utility ---
 const scrollToBottom = () => {
@@ -84,93 +112,188 @@ const scrollToBottom = () => {
 
 // --- API Call ---
 const sendMessage = async () => {
-    if (
-        !currentQuery.value.trim() ||
-        isLoading.value
-        // REMOVED: !serverPath.value.trim()
-    )
-        return;
+    if (!currentQuery.value.trim() || isLoading.value) return;
 
     const userQuery = currentQuery.value;
-    // const currentServerPath = serverPath.value; // REMOVED
-
-    // Add user message to history immediately
     chatHistory.value.push({ role: "user", content: userQuery });
     currentQuery.value = ""; // Clear input field
     isLoading.value = true;
     error.value = null;
+    initialStreamEnded = false; // Reset flag
     scrollToBottom();
 
-    try {
-        // Prepare history for the backend (only send what the API needs)
-        // The backend will handle the full message construction for Anthropic
-        const historyToSend = chatHistory.value.slice(0, -1); // Send all but the latest user message
+    // Add temporary assistant message for streaming
+    const tempAssistantMessageIndex = chatHistory.value.length;
+    chatHistory.value.push({ role: "assistant", content: "" }); // Start empty
 
+    try {
         const response = await fetch("/api/chat", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                Accept: "text/event-stream", // Expect stream
             },
             body: JSON.stringify({
                 query: userQuery,
-                // serverPath: currentServerPath, // REMOVED
-                history: historyToSend, // Send the history up to the previous turn
+                history: chatHistory.value.slice(0, -2), // Send history BEFORE user query and temp message
             }),
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
+            let errorMsg = `HTTP error! Status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.error || errorMsg;
+            } catch (e) {
+                /* Ignore */
+            }
+            throw new Error(errorMsg);
+        }
+
+        if (
+            !response.body ||
+            !response.headers.get("content-type")?.includes("text/event-stream")
+        ) {
             throw new Error(
-                errorData.error || `HTTP error! Status: ${response.status}`
+                "Expected a stream but received a different content type from /api/chat."
             );
         }
 
-        const data = await response.json();
+        // --- Process the initial stream from /api/chat ---
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let currentAssistantContent = "";
 
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
-        // --- Handle Confirmation or Direct Response ---
-        if (data.confirmationNeeded) {
-            console.log("Confirmation required:", data.confirmationNeeded);
-            // Store details needed for confirmation
-            toolToConfirmDetails.value = data.confirmationNeeded;
-
-            // Add any initial assistant text before the tool call to history for display
-            if (data.confirmationNeeded.initialAssistantText) {
-                chatHistory.value.push({
-                    role: "assistant",
-                    content: data.confirmationNeeded.initialAssistantText,
-                });
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                initialStreamEnded = true; // Mark that stream ended normally
+                break;
             }
 
-            // Show the confirmation modal
-            showConfirmationModal.value = true;
-        } else if (data.history && Array.isArray(data.history)) {
-            // If no confirmation needed, update history as before
-            chatHistory.value = data.history
-                .filter(
-                    (msg: any) =>
-                        (msg.role === "user" || msg.role === "assistant") &&
-                        typeof msg.content === "string"
-                )
-                .map((msg: any) => ({ role: msg.role, content: msg.content }));
-        } else if (data.response) {
-            // Fallback if only the single response is sent (older backend format)
-            chatHistory.value.push({
-                role: "assistant",
-                content: data.response.content,
-            });
-        } else {
-            throw new Error("Invalid response format from server");
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n");
+            for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                    const jsonData = line.substring(6);
+                    try {
+                        const eventData = JSON.parse(jsonData);
+
+                        if (eventData.type === "chunk") {
+                            currentAssistantContent += eventData.content;
+                            chatHistory.value[
+                                tempAssistantMessageIndex
+                            ].content = currentAssistantContent;
+                            scrollToBottom();
+                        } else if (eventData.type === "confirm") {
+                            // Single message confirmation handling
+                            console.log(
+                                "Confirmation requested:",
+                                eventData.details
+                            );
+                            toolToConfirmDetails.value = eventData.details;
+                            confirmationComplete.value = true;
+
+                            // Set confirmation text directly from the details
+                            streamingConfirmation.value =
+                                eventData.details.confirmationText ||
+                                `Are you sure you want to proceed with ${
+                                    eventData.details.name || "this operation"
+                                }?`;
+
+                            // Update assistant message content
+                            chatHistory.value[
+                                tempAssistantMessageIndex
+                            ].content = currentAssistantContent;
+
+                            // Show confirmation modal
+                            showConfirmationModal.value = true;
+
+                            // Stop stream processing
+                            await reader.cancel();
+                            initialStreamEnded = false;
+                            break;
+                        } else if (eventData.type === "history") {
+                            // Final history received (no tool confirmation occurred)
+                            console.log(
+                                "Received final history from initial stream."
+                            );
+                            chatHistory.value = eventData.content
+                                .filter(
+                                    (msg: any) =>
+                                        (msg.role === "user" ||
+                                            msg.role === "assistant") &&
+                                        typeof msg.content === "string"
+                                )
+                                .map((msg: any) => ({
+                                    role: msg.role,
+                                    content: msg.content,
+                                }));
+                            initialStreamEnded = true;
+                            await reader.cancel(); // Done with stream
+                            break; // Exit inner loop
+                        } else if (eventData.type === "error") {
+                            console.error(
+                                "Received error event from initial stream:",
+                                eventData.content
+                            );
+                            error.value = eventData.content;
+                            chatHistory.value[
+                                tempAssistantMessageIndex
+                            ].content += `\n[Stream Error: ${eventData.content}]`;
+                            await reader.cancel();
+                            initialStreamEnded = false;
+                            break; // Exit inner loop
+                        }
+                    } catch (e) {
+                        console.error(
+                            "Failed to parse initial stream data:",
+                            jsonData,
+                            e
+                        );
+                    }
+                }
+            }
+            // Check if we need to break outer loop (e.g., after confirm event)
+            if (
+                showConfirmationModal.value ||
+                error.value ||
+                initialStreamEnded
+            )
+                break;
         }
+        // End of while loop
+        console.log("Initial stream processing finished.");
     } catch (err: any) {
-        console.error("Frontend Error:", err);
-        error.value = err.message || "An unknown error occurred.";
-        // Keep the user message, but show error
+        // Add detailed logging
+        console.error(
+            "Caught error object in sendMessage:",
+            JSON.stringify(err, null, 2)
+        );
+        console.error("Typeof err:", typeof err);
+        if (err instanceof Error) {
+            console.error("err is instance of Error");
+            console.error("err.message:", err.message);
+            console.error("err.stack:", err.stack);
+        } else {
+            console.error("err is NOT instance of Error");
+        }
+        // End detailed logging
+
+        console.error("Error during initial chat / streaming:", err); // Keep original log
+        // Refine error message assignment for non-standard errors
+        error.value =
+            err?.message ??
+            (typeof err === "string" ? err : "An unknown error occurred");
+        chatHistory.value[
+            tempAssistantMessageIndex
+        ].content = `[Error: ${error.value}]`;
     } finally {
-        isLoading.value = false;
+        // Only set loading false if the stream ended normally or with error,
+        // NOT if waiting for confirmation
+        if (initialStreamEnded || error.value) {
+            isLoading.value = false;
+        }
         scrollToBottom();
     }
 };
@@ -181,25 +304,24 @@ const handleConfirm = async () => {
 
     console.log("User confirmed tool:", toolToConfirmDetails.value.name);
     showConfirmationModal.value = false;
-    isLoading.value = true; // Show loading indicator
+    streamingConfirmation.value = "";
+    confirmationComplete.value = false;
+    isLoading.value = true;
     error.value = null;
+    initialStreamEnded = false; // Reset flag for the *next* stream
 
-    // --- Prepare for streaming response ---
-    // Add a temporary assistant message to update
+    // Add temporary assistant message for the *second* stream
     const tempAssistantMessageIndex = chatHistory.value.length;
-    chatHistory.value.push({
-        role: "assistant",
-        content: "Executing tool and waiting for response...", // Placeholder
-    });
+    chatHistory.value.push({ role: "assistant", content: "Executing tool..." });
     scrollToBottom();
 
     try {
+        // Call the confirmTool endpoint (expects a stream response)
         const response = await fetch("/api/confirmTool", {
-            // NEW ENDPOINT
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Accept: "text/event-stream", // Indicate preference for stream
+                Accept: "text/event-stream", // Expect stream
             },
             body: JSON.stringify(toolToConfirmDetails.value), // Send all details
         });
@@ -260,7 +382,10 @@ const handleConfirm = async () => {
 
         while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+                initialStreamEnded = true; // Mark confirm stream ended
+                break;
+            }
 
             const chunk = decoder.decode(value, { stream: true });
             // Process Server-Sent Event data lines
@@ -322,11 +447,12 @@ const handleConfirm = async () => {
         console.error("Error during tool confirmation / streaming:", err);
         error.value =
             err.message || "An unknown error occurred during confirmation.";
-        // Update the temp message with error
+        // Update the *correct* temp message with error
         chatHistory.value[
             tempAssistantMessageIndex
         ].content = `[Error: ${error.value}]`;
     } finally {
+        // Loading is now always false after confirm attempt finishes/errors
         isLoading.value = false;
         toolToConfirmDetails.value = null; // Clear confirmation details
         scrollToBottom();
@@ -336,13 +462,33 @@ const handleConfirm = async () => {
 const handleCancel = () => {
     console.log("User cancelled tool:", toolToConfirmDetails.value?.name);
     showConfirmationModal.value = false;
-    // Add a cancellation message to the chat
-    chatHistory.value.push({
-        role: "assistant",
-        content: `[Tool execution cancelled by user: ${toolToConfirmDetails.value?.name}]`,
-    });
+    streamingConfirmation.value = "";
+    confirmationComplete.value = false;
+
+    // Append cancellation notice to the last assistant message
+    const lastMessageIndex = chatHistory.value.length - 1;
+    if (
+        lastMessageIndex >= 0 &&
+        chatHistory.value[lastMessageIndex].role === "assistant"
+    ) {
+        // Add extra newline for separation before the cancellation message
+        chatHistory.value[
+            lastMessageIndex
+        ].content += `\n\n[Tool execution cancelled by user: ${
+            toolToConfirmDetails.value?.name || "Unknown Tool"
+        }]`;
+    } else {
+        // Fallback: Add as a new message if the last message wasn't an assistant message (unexpected)
+        chatHistory.value.push({
+            role: "assistant",
+            content: `[Tool execution cancelled by user: ${
+                toolToConfirmDetails.value?.name || "Unknown Tool"
+            }]`,
+        });
+    }
+
     toolToConfirmDetails.value = null; // Clear confirmation details
-    isLoading.value = false;
+    isLoading.value = false; // Stop loading indicator
     scrollToBottom();
 };
 </script>
@@ -535,39 +681,92 @@ pre {
 .modal-content {
     background-color: white;
     padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    max-width: 500px;
+    border-radius: 12px;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25);
+    max-width: 700px;
     width: 90%;
     text-align: center;
 }
 
 .modal-content h3 {
     margin-top: 0;
-    margin-bottom: 15px;
+    margin-bottom: 25px;
     color: #333;
+    font-size: 1.6em;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 12px;
 }
 
-.modal-content p {
-    margin-bottom: 10px;
-    color: #555;
+.modal-content h4 {
+    text-align: left;
+    color: #444;
+    margin-bottom: 8px;
+    font-size: 1.1em;
+}
+
+.tool-details {
+    background-color: #f0f5ff;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    text-align: left;
+    border-left: 4px solid #5a5a8a;
+}
+
+.assistant-response {
+    margin-bottom: 20px;
     text-align: left;
 }
 
-.modal-content pre {
-    background-color: #f5f5f5;
-    padding: 10px;
-    border-radius: 4px;
+.assistant-response pre {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 6px;
     text-align: left;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #eaeaea;
+    font-size: 0.95em;
+}
+
+.confirmation-container {
+    margin: 25px 0;
+    text-align: left;
+}
+
+.confirmation-message {
+    background-color: #f5fff5;
+    padding: 18px;
+    border-radius: 8px;
+    margin: 8px 0 20px 0;
+    text-align: left;
+    min-height: 80px;
+    border: 1px solid #d0e8d0;
+}
+
+.confirmation-text {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 1.05em;
+    line-height: 1.6;
+    color: #333;
     max-height: 200px;
     overflow-y: auto;
-    border: 1px solid #ddd;
+}
+
+.loading-dots {
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    margin-top: 20px;
 }
 
 .modal-buttons {
-    margin-top: 25px;
+    margin-top: 30px;
     display: flex;
-    justify-content: space-around;
+    justify-content: center;
+    gap: 20px;
 }
 
 .modal-buttons button {
@@ -597,5 +796,67 @@ pre {
 .cancel-button:hover {
     background-color: #da190b;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Add streaming confirmation styles */
+.confirmation-message {
+    background-color: #f5f5f5;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 15px 0;
+    text-align: left;
+    min-height: 60px;
+    border: 1px solid #ddd;
+}
+
+.confirmation-text {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 1em;
+    line-height: 1.5;
+    color: #333;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.loading-dots {
+    color: #666;
+    font-style: italic;
+}
+
+.loading-dots span {
+    animation: dots 1.5s infinite;
+    opacity: 0;
+}
+
+.loading-dots span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.loading-dots span:nth-child(2) {
+    animation-delay: 0.5s;
+}
+
+.loading-dots span:nth-child(3) {
+    animation-delay: 1s;
+}
+
+@keyframes dots {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* Ensure the confirm button is disabled while confirmation is streaming */
+.confirm-button:disabled {
+    background-color: #a0c0a0;
+    cursor: not-allowed;
 }
 </style>
