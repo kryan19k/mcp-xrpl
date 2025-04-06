@@ -76,6 +76,7 @@ let client = null;
 
 // Form state
 const username = ref('');
+const seedPhrase = ref('');
 const loading = ref(false);
 const step = ref('initial');
 const errorMessage = ref('');
@@ -149,10 +150,31 @@ async function startAuthentication() {
     // 4. Get user data
     const userData = await verificationResponse.json();
     
-    // 5. Store in localStorage (as in wallet.vue)
+    // 5. Store in localStorage
     localStorage.setItem('webauthn_user', JSON.stringify(userData.user));
     
-    // 6. Redirect to homepage
+    // 6. Get seed from localStorage or server response
+    let xrplSeed = userData.user.xrplSeed;
+    
+    // If not in the response, try to get it from the localStorage
+    if (!xrplSeed) {
+      try {
+        const storedUserData = JSON.parse(localStorage.getItem('webauthn_user') || '{}');
+        xrplSeed = storedUserData.xrplSeed;
+      } catch (e) {
+        console.warn('Could not parse user data from localStorage');
+      }
+    }
+    
+    // 7. If we have a seed, save it to .env
+    if (xrplSeed) {
+      console.log('Saving XRPL seed to .env file');
+      await saveSeedPhrase(xrplSeed, username.value);
+    } else {
+      console.warn('No XRPL seed found to save in .env file');
+    }
+    
+    // 8. Redirect to homepage
     navigateTo('/');
     
   } catch (error) {
@@ -161,6 +183,35 @@ async function startAuthentication() {
     errorMessage.value = error.message || 'An error occurred during authentication';
   } finally {
     loading.value = false;
+  }
+}
+
+// Function to save seed phrase to .env file
+async function saveSeedPhrase(seed, username) {
+  try {
+    const response = await fetch('/api/saveSeed', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        xrplSeed: seed,
+        username: username
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erreur lors de la sauvegarde de la seed phrase');
+    }
+    
+    // Store seed in localStorage for immediate use
+    localStorage.setItem('xrpl_seed', seed);
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving seed phrase:', error);
+    throw error;
   }
 }
 </script>
@@ -406,6 +457,13 @@ async function startAuthentication() {
 
 .form-input:focus ~ .input-focus-effect {
   width: calc(100% - 2px);
+}
+
+.form-hint {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  margin-top: var(--space-1);
+  font-style: italic;
 }
 
 .auth-button {

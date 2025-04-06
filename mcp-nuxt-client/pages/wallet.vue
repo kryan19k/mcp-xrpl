@@ -150,58 +150,116 @@ let client = null;
 let xrplClient = null;
 
 onMounted(async () => {
-  // Check if user has a wallet
+  loading.value = true;
   try {
-    const userDataStr = localStorage.getItem('webauthn_user');
-    if (!userDataStr) {
-      navigateTo('/');
-      return;
-    }
+    // Récupérer les données utilisateur du localStorage
+    const storedUser = localStorage.getItem('webauthn_user');
+    if (storedUser) {
+      userWallet.value = JSON.parse(storedUser);
+      console.log('Utilisateur connecté trouvé :', userWallet.value);
 
-    userWallet.value = JSON.parse(userDataStr);
-    console.log('User data loaded:', userWallet.value);
-    
-    try {
-      // Dynamically import WebAuthn library
-      const webauthn = await import('@passwordless-id/webauthn');
-      client = webauthn.client;
-      console.log('WebAuthn library loaded successfully');
-    } catch (webauthnError) {
-      console.error('Error loading WebAuthn:', webauthnError);
-      errorMessage.value = "WebAuthn loading error: " + webauthnError.message;
-      step.value = 'error';
-      return;
-    }
-    
-    try {
-      // Initialize XRPL client correctly
-      xrplClient = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
-      await xrplClient.connect();
-      console.log('XRPL client initialized and connected successfully');
-    } catch (xrplError) {
-      console.error('Error initializing XRPL client:', xrplError);
-      errorMessage.value = "XRPL connection error: " + xrplError.message;
-      step.value = 'error';
-      return;
-    }
-    
-    // If we have user data, proceed to wallet step
-    if (userWallet.value && userWallet.value.xrplAddress) {
-      step.value = 'wallet';
-      
-      // Initialize with empty values, not fake data
-      walletBalance.value = '...';
-      transactions.value = [];
-      
-      // Get real data immediately
-      await refreshBalance();
+      // Si la seed est disponible, l'utiliser
+      if (userWallet.value.xrplSeed) {
+        await connectToXRPL(userWallet.value.xrplSeed);
+      } else {
+        // Essayer de récupérer la seed depuis l'API
+        await loadSeedFromEnv();
+      }
+    } else {
+      errorMessage.value = "Aucun utilisateur connecté trouvé.";
+      await navigateTo('/login');
     }
   } catch (error) {
-    console.error('Error loading profile data:', error);
-    errorMessage.value = 'Unable to load user data. Please reconnect.';
-    step.value = 'error';
+    console.error('Erreur lors du chargement des données utilisateur :', error);
+    errorMessage.value = error.message || 'Une erreur est survenue lors du chargement des données utilisateur';
+  } finally {
+    loading.value = false;
   }
 });
+
+// Charger la seed à partir du fichier .env
+async function loadSeedFromEnv() {
+  try {
+    const response = await fetch('/api/loadSeed', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        requestDefaultSeed: true
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Impossible de charger la seed depuis le fichier .env');
+    }
+
+    const data = await response.json();
+    
+    if (data.seed) {
+      // Mettre à jour les données utilisateur locales
+      userWallet.value.xrplSeed = data.seed;
+      localStorage.setItem('webauthn_user', JSON.stringify(userWallet.value));
+      
+      // Se connecter à XRPL
+      await connectToXRPL(data.seed);
+    } else {
+      throw new Error('Aucune seed trouvée dans le fichier .env');
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement de la seed :', error);
+    errorMessage.value = error.message || 'Une erreur est survenue lors du chargement de la seed';
+  }
+}
+
+// Connexion au réseau XRPL
+async function connectToXRPL(seed) {
+  loading.value = true;
+  loadingMessage.value = 'Connexion au réseau XRPL...';
+  
+  try {
+    // Initialiser le client XRPL
+    xrplClient = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
+    await xrplClient.connect();
+    console.log('XRPL client connecté avec succès');
+    
+    // Créer le wallet à partir de la seed
+    const wallet = xrpl.Wallet.fromSeed(seed);
+    
+    // Vérifier que l'adresse correspond à celle stockée
+    if (userWallet.value.xrplAddress && wallet.address !== userWallet.value.xrplAddress) {
+      console.warn('Attention: L\'adresse générée par la seed ne correspond pas à l\'adresse stockée');
+      // Mettre à jour l'adresse stockée avec celle générée par la seed
+      userWallet.value.xrplAddress = wallet.address;
+      localStorage.setItem('webauthn_user', JSON.stringify(userWallet.value));
+    }
+    
+    // Mettre à jour l'adresse si elle n'est pas définie
+    if (!userWallet.value.xrplAddress) {
+      userWallet.value.xrplAddress = wallet.address;
+      localStorage.setItem('webauthn_user', JSON.stringify(userWallet.value));
+    }
+    
+    // Initialiser le solde initial si non défini
+    if (!userWallet.value.initialBalance) {
+      userWallet.value.initialBalance = '10.00';  // Valeur par défaut pour le TestNet
+      localStorage.setItem('webauthn_user', JSON.stringify(userWallet.value));
+    }
+    
+    // Passer à l'étape portefeuille
+    step.value = 'wallet';
+    
+    // Rafraîchir le solde immédiatement
+    await refreshBalance();
+    
+  } catch (error) {
+    console.error('Erreur lors de la connexion à XRPL:', error);
+    errorMessage.value = 'Erreur de connexion XRPL: ' + (error.message || 'Connexion impossible');
+    step.value = 'error';
+  } finally {
+    loading.value = false;
+  }
+}
 
 // Function to format dates
 function formatDate(date) {

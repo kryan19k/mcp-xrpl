@@ -14,7 +14,7 @@
         <div class="logo-container">
           <div class="logo-icon">🤖</div>
         </div>
-        <h1 class="auth-title">Open Banking Account</h1>
+        <h1 class="auth-title">Ouvrir un compte bancaire</h1>
         <div class="subtitle-line"></div>
       </div>
       
@@ -26,7 +26,7 @@
           :class="{ 'active': registerMethod === 'abstraction' }"
         >
           <span class="tab-icon">🔐</span>
-          <span>Account Abstraction</span>
+          <span>Abstraction de compte</span>
         </button>
         <button 
           @click="registerMethod = 'seed'" 
@@ -34,14 +34,14 @@
           :class="{ 'active': registerMethod === 'seed' }"
         >
           <span class="tab-icon">🔑</span>
-          <span>Use Existing Seed</span>
+          <span>Utiliser une seed existante</span>
         </button>
       </div>
       
       <!-- Step 1: Registration form with abstraction -->
       <div v-if="step === 'initial' && registerMethod === 'abstraction'" class="auth-form">
         <div class="form-group">
-          <label for="username" class="form-label">Choose Username</label>
+          <label for="username" class="form-label">Nom d'utilisateur</label>
           <div class="input-wrapper">
             <span class="input-icon">👤</span>
             <input
@@ -49,7 +49,7 @@
               id="username"
               v-model="username"
               class="form-input"
-              placeholder="Enter a unique username"
+              placeholder="Entrez un nom d'utilisateur unique"
             />
             <span class="input-focus-effect"></span>
           </div>
@@ -63,15 +63,15 @@
           <span class="button-content">
             <span v-if="loading" class="loading-indicator"></span>
             <span v-else class="button-icon">✨</span>
-            <span class="button-text">{{ loading ? 'Creating your account...' : 'Create AI Banking Account' }}</span>
+            <span class="button-text">{{ loading ? 'Création de votre compte...' : 'Créer mon compte bancaire IA' }}</span>
           </span>
           <span class="button-shine"></span>
         </button>
         
         <div class="auth-links">
           <p>
-            Already have an account? 
-            <NuxtLink to="/login" class="auth-link">Login</NuxtLink>
+            Vous avez déjà un compte ? 
+            <NuxtLink to="/login" class="auth-link">Se connecter</NuxtLink>
           </p>
         </div>
       </div>
@@ -79,7 +79,7 @@
       <!-- Step 1: Registration form with seed -->
       <div v-if="step === 'initial' && registerMethod === 'seed'" class="auth-form">
         <div class="form-group">
-          <label for="username_seed" class="form-label">Choose Username</label>
+          <label for="username_seed" class="form-label">Nom d'utilisateur</label>
           <div class="input-wrapper">
             <span class="input-icon">👤</span>
             <input
@@ -87,14 +87,14 @@
               id="username_seed"
               v-model="username"
               class="form-input"
-              placeholder="Enter a unique username"
+              placeholder="Entrez un nom d'utilisateur unique"
             />
             <span class="input-focus-effect"></span>
           </div>
         </div>
         
         <div class="form-group">
-          <label for="existing_seed" class="form-label">XRPL Private Key (Seed)</label>
+          <label for="existing_seed" class="form-label">Clé privée XRPL (Seed)</label>
           <div class="input-wrapper">
             <span class="input-icon">🔐</span>
             <input
@@ -102,7 +102,7 @@
               id="existing_seed"
               v-model="existingSeed"
               class="form-input"
-              placeholder="Enter your XRPL private key"
+              placeholder="Entrez votre clé privée XRPL"
             />
             <button 
               @click="toggleExistingSeedVisibility" 
@@ -123,20 +123,20 @@
           <span class="button-content">
             <span v-if="loading" class="loading-indicator"></span>
             <span v-else class="button-icon">💼</span>
-            <span class="button-text">{{ loading ? 'Registering account...' : 'Register with Existing Wallet' }}</span>
+            <span class="button-text">{{ loading ? 'Enregistrement du compte...' : 'Enregistrer avec un portefeuille existant' }}</span>
           </span>
           <span class="button-shine"></span>
         </button>
         
         <div class="seed-warning">
           <div class="warning-icon">⚠️</div>
-          <p>Never share your private key. This method allows you to register an existing XRPL wallet with our app.</p>
+          <p>Ne partagez jamais votre clé privée. Cette méthode vous permet d'enregistrer un portefeuille XRPL existant avec notre application.</p>
         </div>
         
         <div class="auth-links">
           <p>
-            Already have an account? 
-            <NuxtLink to="/login" class="auth-link">Login</NuxtLink>
+            Vous avez déjà un compte ? 
+            <NuxtLink to="/login" class="auth-link">Se connecter</NuxtLink>
           </p>
         </div>
       </div>
@@ -148,21 +148,21 @@
             <div class="icon-bg"></div>
             <span>✅</span>
           </div>
-          <h2 class="success-title">Account Created!</h2>
-          <p class="success-message">Your AI-powered XRPL Banking account has been successfully activated.</p>
+          <h2 class="success-title">Compte créé !</h2>
+          <p class="success-message">Votre compte bancaire XRPL avec IA a été activé avec succès.</p>
         </div>
 
         <div class="alert-box">
           <div class="alert-icon">⚠️</div>
           <div class="alert-content">
-            <h3 class="alert-title">Important Security Note</h3>
-            <p class="alert-message">Store your private key in a secure location. It will never be displayed again and is essential for account recovery.</p>
+            <h3 class="alert-title">Note de sécurité importante</h3>
+            <p class="alert-message">Conservez votre clé privée dans un endroit sécurisé. Elle ne sera plus jamais affichée et est essentielle pour la récupération de compte.</p>
           </div>
         </div>
 
         <div class="wallet-info">
           <div class="wallet-field">
-            <label class="wallet-label">XRPL Account Address</label>
+            <label class="wallet-label">Adresse du compte XRPL</label>
             <div class="wallet-value-container">
               <input 
                 type="text" 
@@ -182,7 +182,7 @@
           </div>
 
           <div class="wallet-field">
-            <label class="wallet-label">XRPL Private Key</label>
+            <label class="wallet-label">Clé privée XRPL</label>
             <div class="wallet-value-container">
               <input 
                 :type="showSeed ? 'text' : 'password'" 
@@ -219,30 +219,33 @@
               class="checkbox-input" 
             />
             <span class="checkbox-custom"></span>
-            <span class="checkbox-label">I have securely stored my private key</span>
+            <span class="checkbox-label">J'ai stocké ma clé privée en lieu sûr</span>
           </label>
           
-          <button 
-            @click="connectToWallet" 
-            class="auth-button"
-            :disabled="!hasBackedUp"
+          <a 
+            :href="hasBackedUp ? '/wallet' : '#'" 
+            :class="{
+              'auth-button': true,
+              'disabled-link': !hasBackedUp
+            }"
+            onclick="return document.querySelector('.checkbox-input').checked"
           >
             <span class="button-content">
               <span class="button-icon">🏦</span>
-              <span class="button-text">Access My AI Banking Dashboard</span>
+              <span class="button-text">Accéder à mon tableau de bord bancaire IA</span>
             </span>
             <span class="button-shine"></span>
-          </button>
+          </a>
         </div>
       </div>
       
       <!-- Error step -->
       <div v-if="step === 'error'" class="auth-error">
         <div class="error-icon">❌</div>
-        <h2 class="error-title">Account Creation Failed</h2>
+        <h2 class="error-title">Échec de création du compte</h2>
         <p class="error-message">{{ errorMessage }}</p>
         <button @click="step = 'initial'" class="retry-button">
-          Try Again
+          Réessayer
           <span class="button-shine"></span>
         </button>
       </div>
@@ -287,9 +290,9 @@ onMounted(async () => {
     const webauthn = await import('@passwordless-id/webauthn');
     client = webauthn.client;
   } catch (error) {
-    console.error('Error loading WebAuthn library:', error);
+    console.error('Erreur lors du chargement de la bibliothèque WebAuthn:', error);
     step.value = 'error';
-    errorMessage.value = 'Unable to load WebAuthn library';
+    errorMessage.value = 'Impossible de charger la bibliothèque WebAuthn';
   }
 });
 
@@ -310,7 +313,7 @@ async function registerWithSeed() {
     try {
       wallet = xrpl.Wallet.fromSeed(existingSeed.value.trim());
     } catch (error) {
-      throw new Error('Invalid seed format. Please check your private key.');
+      throw new Error('Format de clé privée invalide. Veuillez vérifier votre clé.');
     }
     
     // Try to connect to XRPL to verify the account exists
@@ -326,7 +329,7 @@ async function registerWithSeed() {
       });
       
       if (!accountInfo.result || !accountInfo.result.account_data) {
-        throw new Error('Account not found on the XRPL network.');
+        throw new Error('Compte non trouvé sur le réseau XRPL.');
       }
       
       // Set wallet data for display
@@ -335,6 +338,9 @@ async function registerWithSeed() {
         xrplAddress: wallet.address,
         xrplSeed: existingSeed.value
       };
+      
+      // Save seed to .env file
+      await saveSeedToEnv(existingSeed.value, username.value);
       
       // Account exists, create a user object
       const userData = {
@@ -354,7 +360,7 @@ async function registerWithSeed() {
       
     } catch (error) {
       console.error('XRPL account verification error:', error);
-      throw new Error('Unable to verify account on XRPL. The account may not exist.');
+      throw new Error('Impossible de vérifier le compte sur XRPL. Le compte pourrait ne pas exister.');
     } finally {
       await client.disconnect();
     }
@@ -362,7 +368,7 @@ async function registerWithSeed() {
   } catch (error) {
     console.error('Seed registration error:', error);
     step.value = 'error';
-    errorMessage.value = error.message || 'An error occurred during registration with seed';
+    errorMessage.value = error.message || 'Une erreur est survenue lors de l\'inscription avec la seed';
   } finally {
     loading.value = false;
   }
@@ -385,7 +391,7 @@ async function startRegistration() {
     });
     
     if (!response.ok) {
-      throw new Error('Error requesting the challenge');
+      throw new Error('Erreur lors de la demande du challenge');
     }
     
     const { challenge } = await response.json();
@@ -411,21 +417,21 @@ async function startRegistration() {
     
     if (!verificationResponse.ok) {
       const errorData = await verificationResponse.json();
-      throw new Error(errorData.message || 'Verification error');
+      throw new Error(errorData.message || 'Erreur de vérification');
     }
     
     // Get wallet data
     const userData = await verificationResponse.json();
-    console.log('Received user data:', userData);  // Debug: Log to see full response data
+    console.log('Données utilisateur reçues:', userData);  // Debug: Log to see full response data
     
     // Store wallet information
     walletData.value = {
       username: userData.user.username,
       xrplAddress: userData.user.xrplAddress,
-      xrplSeed: userData.xrplSeed || 'Seed not provided'  // Ensure a fallback if seed is missing
+      xrplSeed: userData.xrplSeed || 'Seed non fournie'  // Ensure a fallback if seed is missing
     };
     
-    console.log('Wallet data set:', walletData.value);  // Debug: Verify wallet data is correct
+    console.log('Données du portefeuille définies:', walletData.value);  // Debug: Verify wallet data is correct
     
     // Store in localStorage
     localStorage.setItem('webauthn_user', JSON.stringify({
@@ -437,13 +443,18 @@ async function startRegistration() {
       loginMethod: 'abstraction'
     }));
     
+    // Save seed to .env file
+    if (userData.xrplSeed) {
+      await saveSeedToEnv(userData.xrplSeed, userData.user.username);
+    }
+    
     // Registration successful, show wallet information
     step.value = 'success';
     
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Erreur d\'inscription:', error);
     step.value = 'error';
-    errorMessage.value = error.message || 'An error occurred during registration';
+    errorMessage.value = error.message || 'Une erreur est survenue lors de l\'inscription';
   } finally {
     loading.value = false;
   }
@@ -477,7 +488,39 @@ function toggleSeedVisibility() {
 
 // Function to access wallet
 function connectToWallet() {
-  navigateTo('/wallet');
+  try {
+    // Rediriger vers la page de login
+    window.location.href = '/wallet';
+  } catch (error) {
+    console.error('Erreur lors de la navigation:', error);
+  }
+}
+
+// Function to save seed to .env file
+async function saveSeedToEnv(seed, username) {
+  try {
+    const response = await fetch('/api/saveSeed', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        xrplSeed: seed,
+        username: username
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error saving seed:', errorData);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving seed to .env:', error);
+    return false;
+  }
 }
 </script>
 
@@ -1218,6 +1261,20 @@ function connectToWallet() {
   color: var(--gray-300);
   font-size: 0.85rem;
   margin: 0;
+}
+
+/* Style pour le lien qui remplace le bouton */
+a.auth-button {
+  display: inline-block;
+  text-decoration: none;
+}
+
+a.disabled-link {
+  background: var(--gray-700);
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
 }
 
 @media (max-width: 640px) {
