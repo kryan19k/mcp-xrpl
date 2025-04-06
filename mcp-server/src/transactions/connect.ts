@@ -23,7 +23,7 @@ server.tool(
     },
     async ({ useSeedFromEnv }) => {
         let client: Client | null = null;
-        let isTestnet = false;
+        let isTestnet = true; // Always use testnet
         let wallet;
         try {
             // Default to using env seed if available
@@ -31,13 +31,12 @@ server.tool(
                 useSeedFromEnv === undefined ? !!DEFAULT_SEED : useSeedFromEnv;
 
             if (useEnvSeed && DEFAULT_SEED) {
-                // Use mainnet for existing wallets
-                client = await getXrplClient(false);
+                // Always use testnet even for existing wallets
+                client = await getXrplClient(true);
                 wallet = Wallet.fromSeed(DEFAULT_SEED);
-                console.error("Using wallet from .env seed on mainnet");
+                console.error("Using wallet from .env seed on testnet");
             } else {
                 // Use testnet for creating new wallets
-                isTestnet = true;
                 client = await getXrplClient(true);
 
                 if (useEnvSeed && !DEFAULT_SEED) {
@@ -66,8 +65,8 @@ server.tool(
                         text: JSON.stringify(
                             {
                                 status: "connected",
-                                network: isTestnet ? TESTNET_URL : MAINNET_URL,
-                                networkType: isTestnet ? "testnet" : "mainnet",
+                                network: TESTNET_URL,
+                                networkType: "testnet",
                                 wallet: {
                                     address: wallet.address,
                                     publicKey: wallet.publicKey,
