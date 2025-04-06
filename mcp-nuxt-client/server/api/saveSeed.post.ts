@@ -6,10 +6,10 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event);
     const { xrplSeed, username } = body;
 
-    if (!xrplSeed || !username) {
+    if (!xrplSeed) {
       return createError({
         statusCode: 400,
-        statusMessage: 'Missing required fields: xrplSeed or username',
+        statusMessage: 'Missing required field: xrplSeed',
       });
     }
 
@@ -25,35 +25,35 @@ export default defineEventHandler(async (event) => {
       console.log('Creating new .env file');
     }
 
-    // Check if XRPL_SEED is already defined
-    const seedRegex = new RegExp(`^XRPL_SEED_${username.toUpperCase()}=.*$`, 'm');
+    // Check if SEED is already defined
+    const seedRegex = new RegExp(`^SEED=.*$`, 'm');
     
     if (seedRegex.test(envContent)) {
-      // Update existing XRPL_SEED
+      // Update existing SEED
       envContent = envContent.replace(
         seedRegex,
-        `XRPL_SEED_${username.toUpperCase()}="${xrplSeed}"`
+        `SEED="${xrplSeed}"`
       );
     } else {
-      // Add XRPL_SEED to .env
-      envContent += `\nXRPL_SEED_${username.toUpperCase()}="${xrplSeed}"\n`;
+      // Add SEED to .env
+      envContent += `\nXRPL_SEED=${xrplSeed}\n`;
     }
 
     // Write to .env file
     await writeFile(envPath, envContent);
 
-    console.log(`XRPL seed for ${username} saved to .env file`);
+    console.log(`Seed saved to .env file as SEED`);
     
     return {
       success: true,
-      message: 'XRPL seed saved to environment variables',
+      message: 'Seed saved to environment variables',
     };
   } catch (error: any) {
-    console.error('Error saving XRPL seed:', error);
+    console.error('Error saving seed:', error);
     
     return createError({
       statusCode: 500,
-      statusMessage: error.message || 'Failed to save XRPL seed',
+      statusMessage: error.message || 'Failed to save seed',
     });
   }
 }); 

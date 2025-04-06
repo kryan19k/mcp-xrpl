@@ -66,39 +66,7 @@
           </div>
         </div>
       </div>
-      
-      <!-- Transactions Section -->
-      <div class="transactions-section dashboard-card">
-        <div class="card-header">
-          <h3><span class="card-icon">📊</span> Transaction History</h3>
-        </div>
-        
-        <div v-if="transactions.length > 0" class="transactions-list">
-          <div v-for="(tx, index) in realTransactions" :key="index" class="transaction-item">
-            <div class="transaction-icon">
-              <span v-if="tx.type === 'Payment'" class="tx-icon payment">💸</span>
-              <span v-else class="tx-icon">📝</span>
-            </div>
-            <div class="transaction-details">
-              <div class="transaction-type">{{ tx.type }}</div>
-              <div class="transaction-date">{{ formatDate(tx.date) }}</div>
-            </div>
-            <div class="transaction-amount" :class="{'amount-positive': tx.amount > 0}">
-              {{ tx.amount ? tx.amount.toFixed(2) + ' XRP' : 'N/A' }}
-            </div>
-          </div>
-        </div>
-        
-        <div v-else class="no-transactions">
-          <div class="empty-state-icon">🤖</div>
-          <p>Your AI assistant is ready to process your first transaction</p>
-          <button @click="refreshBalance" class="secondary-button small-button">
-            <span class="button-icon">🔄</span>
-            <span>Refresh</span>
-          </button>
-        </div>
-      </div>
-      
+    
       <!-- AI Assistant Card -->
       <div class="faucet-card dashboard-card">
         <div class="card-header">
@@ -108,7 +76,6 @@
           <div class="faucet-icon">🧠</div>
           <div class="faucet-details">
             <p>Your account is connected to our <strong>MCP-enabled AI agent</strong> that optimizes your transactions.</p>
-            <p class="faucet-note">Initial balance of <strong>{{ userWallet.initialBalance }} XRP</strong> has been allocated to your account from TestNet.</p>
             <button @click="navigateTo('/agent')" class="ai-chat-button">
               <span class="button-icon">💬</span>
               <span>Chat with AI Agent</span>
@@ -116,31 +83,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Banking Actions -->
-      <div class="wallet-actions">
-        <button @click="refreshBalance" class="primary-button">
-          <span class="button-icon">🔄</span>
-          <span>Update Account</span>
-          <span class="button-shine"></span>
-        </button>
-        <button @click="navigateTo('/')" class="secondary-button">
-          <span class="button-icon">🏠</span>
-          <span>Back to Home</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Error state -->
-    <div v-else-if="step === 'error'" class="error-card">
-      <div class="error-icon">⚠️</div>
-      <h2 class="text-error">Error</h2>
-      <p>{{ errorMessage }}</p>
-      <button @click="step = 'auth'" class="secondary-button">
-        <span class="button-icon">↩️</span>
-        <span>Try Again</span>
-        <span class="button-shine"></span>
-      </button>
     </div>
   </div>
 </template>
@@ -167,13 +109,6 @@ const lastRefreshed = ref('-');
 const faucetMessage = ref('');
 const faucetError = ref(false);
 
-// Real transactions for display
-const transactions = ref([]);
-
-// Formatted transactions for display
-const realTransactions = computed(() => {
-  return transactions.value.slice(0, 5); // Show only last 5 transactions
-});
 
 // WebAuthn client
 let client = null;
@@ -181,92 +116,80 @@ let client = null;
 let xrplClient = null;
 
 onMounted(async () => {
-  // Check if user has a wallet
+  loading.value = true;
   try {
-    const userDataStr = localStorage.getItem('webauthn_user');
-    if (!userDataStr) {
-      navigateTo('/');
-      return;
-    }
+    // Récupérer les données utilisateur du localStorage
+    const storedUser = localStorage.getItem('webauthn_user');
+    if (storedUser) {
+      userWallet.value = JSON.parse(storedUser);
+      console.log('Utilisateur connecté trouvé :', userWallet.value);
 
-    userWallet.value = JSON.parse(userDataStr);
-    console.log('User data loaded:', userWallet.value);
-    
-    try {
-      // Dynamically import WebAuthn library
-      const webauthn = await import('@passwordless-id/webauthn');
-      client = webauthn.client;
-      console.log('WebAuthn library loaded successfully');
-    } catch (webauthnError) {
-      console.error('Error loading WebAuthn:', webauthnError);
-      errorMessage.value = "WebAuthn loading error: " + webauthnError.message;
-      step.value = 'error';
-      return;
-    }
-    
-    try {
-      // Initialize XRPL client correctly
-      xrplClient = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
-      await xrplClient.connect();
-      console.log('XRPL client initialized and connected successfully');
-    } catch (xrplError) {
-      console.error('Error initializing XRPL client:', xrplError);
-      errorMessage.value = "XRPL connection error: " + xrplError.message;
-      step.value = 'error';
-      return;
-    }
-    
-    // If we have user data, proceed to wallet step
-    if (userWallet.value && userWallet.value.xrplAddress) {
-      // Save seed to .env file if it exists
+      // Si la seed est disponible, l'utiliser
       if (userWallet.value.xrplSeed) {
-        try {
-          const saveSeedResponse = await fetch('/api/saveSeed', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              username: userWallet.value.username,
-              xrplSeed: userWallet.value.xrplSeed
-            }),
-          });
-          
-          if (saveSeedResponse.ok) {
-            console.log('Seed saved to .env file during page load');
-          }
-        } catch (seedError) {
-          console.error('Error saving seed to .env during page load:', seedError);
-          // Continue with wallet access even if saving to .env fails
-        }
+        await connectToXRPL(userWallet.value.xrplSeed);
+      } else {
+        // Essayer de récupérer la seed depuis l'API
+        await loadSeedFromEnv();
       }
-      
-      step.value = 'wallet';
-      
-      // Initialize with empty values, not fake data
-      walletBalance.value = '...';
-      transactions.value = [];
-      
-      // Get real data immediately
-      await refreshBalance();
+    } else {
+      errorMessage.value = "Aucun utilisateur connecté trouvé.";
+      await navigateTo('/login');
     }
   } catch (error) {
-    console.error('Error loading profile data:', error);
-    errorMessage.value = 'Unable to load user data. Please reconnect.';
-    step.value = 'error';
+    console.error('Erreur lors du chargement des données utilisateur :', error);
+    errorMessage.value = error.message || 'Une erreur est survenue lors du chargement des données utilisateur';
+  } finally {
+    loading.value = false;
   }
 });
 
-// Function to format dates
-function formatDate(date) {
-  if (!date) return '';
-  const d = new Date(date);
-  return d.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+// Connexion au réseau XRPL
+async function connectToXRPL(seed) {
+  loading.value = true;
+  loadingMessage.value = 'Connexion au réseau XRPL...';
+  
+  try {
+    // Initialiser le client XRPL
+    xrplClient = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
+    await xrplClient.connect();
+    console.log('XRPL client connecté avec succès');
+    
+    // Créer le wallet à partir de la seed
+    const wallet = xrpl.Wallet.fromSeed(seed);
+    
+    // Vérifier que l'adresse correspond à celle stockée
+    if (userWallet.value.xrplAddress && wallet.address !== userWallet.value.xrplAddress) {
+      console.warn('Attention: L\'adresse générée par la seed ne correspond pas à l\'adresse stockée');
+      // Mettre à jour l'adresse stockée avec celle générée par la seed
+      userWallet.value.xrplAddress = wallet.address;
+      localStorage.setItem('webauthn_user', JSON.stringify(userWallet.value));
+    }
+    
+    // Mettre à jour l'adresse si elle n'est pas définie
+    if (!userWallet.value.xrplAddress) {
+      userWallet.value.xrplAddress = wallet.address;
+      localStorage.setItem('webauthn_user', JSON.stringify(userWallet.value));
+    }
+    
+    // Initialiser le solde initial si non défini
+    if (!userWallet.value.initialBalance) {
+      userWallet.value.initialBalance = '10.00';  // Valeur par défaut pour le TestNet
+      localStorage.setItem('webauthn_user', JSON.stringify(userWallet.value));
+    }
+    
+    // Passer à l'étape portefeuille
+    step.value = 'wallet';
+    
+    // Rafraîchir le solde immédiatement
+    await refreshBalance();
+    
+  } catch (error) {
+    console.error('Erreur lors de la connexion à XRPL:', error);
+    errorMessage.value = 'Erreur de connexion XRPL: ' + (error.message || 'Connexion impossible');
+    step.value = 'error';
+  } finally {
+    loading.value = false;
+  }
 }
 
 // Function to authenticate
@@ -321,32 +244,7 @@ async function authenticate() {
       throw new Error(errorData.message || 'Verification error');
     }
     
-    // 4. Save seed to .env file if it exists in user wallet data
-    if (userWallet.value.xrplSeed) {
-      try {
-        const saveSeedResponse = await fetch('/api/saveSeed', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            username: userWallet.value.username,
-            xrplSeed: userWallet.value.xrplSeed
-          }),
-        });
-        
-        if (saveSeedResponse.ok) {
-          console.log('Seed successfully saved to .env file');
-        } else {
-          console.warn('Failed to save seed to .env file');
-        }
-      } catch (seedError) {
-        console.error('Error saving seed to .env:', seedError);
-        // Continue with wallet access even if saving to .env fails
-      }
-    }
-    
-    // 5. Authentication successful, display wallet
+    // 4. Authentication successful, display wallet
     loadingMessage.value = 'Retrieving wallet data...';
     
     // Get wallet balance
@@ -1126,60 +1024,5 @@ async function copyToClipboard(text) {
   .transaction-amount {
     font-size: 0.9rem;
   }
-}
-
-/* AI Chat Button */
-.ai-chat-button {
-  margin-top: var(--space-4);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--border-radius);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  color: white;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  box-shadow: var(--shadow-sm);
-  position: relative;
-  overflow: hidden;
-  font-size: 0.9rem;
-}
-
-.ai-chat-button:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md), var(--glow-primary);
-}
-
-.ai-chat-button::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-  opacity: 0;
-  z-index: 0;
-  transform: scale(0.5);
-  transition: opacity var(--transition), transform var(--transition);
-}
-
-.ai-chat-button:hover::before {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.ai-chat-button .button-icon {
-  font-size: 1.1rem;
-  position: relative;
-  z-index: 1;
-}
-
-.ai-chat-button span {
-  position: relative;
-  z-index: 1;
 }
 </style> 

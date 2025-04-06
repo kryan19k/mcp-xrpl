@@ -1,7 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk";
 import type {
     MessageParam,
-    Tool,
     ToolResultBlockParam,
 } from "@anthropic-ai/sdk/resources/messages.mjs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -135,7 +134,7 @@ export default defineEventHandler(async (event) => {
     }
 
     let mcpClient: Client;
-    const MCP_SERVER_PATH = "../../mcp-server/build/index.js"; // Use the same hardcoded path
+    const MCP_SERVER_PATH = "../mcp-server/build/index.js";
 
     try {
         mcpClient = await getMcpClient(MCP_SERVER_PATH);
@@ -230,15 +229,42 @@ export default defineEventHandler(async (event) => {
                     const transactionHash =
                         extractTransactionHash(toolResultContent) || "N/A";
 
-                    // Add hash notice at the beginning
-                    const hashPrefix = `Transaction hash: ${transactionHash}\n\n`;
+                    // Check for wallet information in the toolResultContent
+                    let walletInfo = "";
+                    try {
+                        let resultObj =
+                            typeof toolResultContent === "string"
+                                ? JSON.parse(toolResultContent)
+                                : toolResultContent;
+
+                        // Extract wallet information if available
+                        if (resultObj?.wallet?.address) {
+                            walletInfo = `Connected to wallet: ${resultObj.wallet.address}\n`;
+                            if (resultObj.balance) {
+                                walletInfo += `Balance: ${resultObj.balance} drops\n`;
+                            }
+                            if (resultObj.networkType) {
+                                walletInfo += `Network: ${resultObj.networkType}\n`;
+                            }
+                        }
+                    } catch (e) {
+                        console.log(
+                            "Failed to extract wallet info from result"
+                        );
+                    }
+
+                    // Add hash notice at the beginning with wallet info if available
+                    const prefix = walletInfo
+                        ? `${walletInfo}\nTransaction hash: ${transactionHash}\n\n`
+                        : `Transaction hash: ${transactionHash}\n\n`;
+
                     controller.enqueue(
                         `data: ${JSON.stringify({
                             type: "chunk",
-                            content: hashPrefix,
+                            content: prefix,
                         })}\n\n`
                     );
-                    fullResponseText += hashPrefix;
+                    fullResponseText += prefix;
 
                     for await (const event of stream) {
                         if (

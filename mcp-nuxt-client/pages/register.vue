@@ -1,7 +1,7 @@
 <template>
   <div class="auth-container">
     <div class="auth-card">
-      <!-- Décoration d'arrière-plan -->
+      <!-- Background decoration -->
       <div class="backdrop-decoration">
         <div class="glow-circle"></div>
         <div class="floating-shape shape-1"></div>
@@ -9,39 +9,19 @@
         <div class="floating-shape shape-3"></div>
       </div>
       
-      <!-- Titre et logo -->
+      <!-- Title and logo -->
       <div class="auth-header">
         <div class="logo-container">
           <div class="logo-icon">🤖</div>
         </div>
-        <h1 class="auth-title">Open Banking Account</h1>
+        <h1 class="auth-title">Create Bank Account</h1>
         <div class="subtitle-line"></div>
       </div>
       
-      <!-- Registration tabs -->
-      <div v-if="step === 'initial'" class="auth-tabs">
-        <button 
-          @click="registerMethod = 'abstraction'" 
-          class="tab-button" 
-          :class="{ 'active': registerMethod === 'abstraction' }"
-        >
-          <span class="tab-icon">🔐</span>
-          <span>Account Abstraction</span>
-        </button>
-        <button 
-          @click="registerMethod = 'seed'" 
-          class="tab-button" 
-          :class="{ 'active': registerMethod === 'seed' }"
-        >
-          <span class="tab-icon">🔑</span>
-          <span>Use Existing Seed</span>
-        </button>
-      </div>
-      
-      <!-- Step 1: Registration form with abstraction -->
-      <div v-if="step === 'initial' && registerMethod === 'abstraction'" class="auth-form">
+      <!-- Initial registration form -->
+      <div v-if="step === 'initial'" class="auth-form">
         <div class="form-group">
-          <label for="username" class="form-label">Choose Username</label>
+          <label for="username" class="form-label">Username</label>
           <div class="input-wrapper">
             <span class="input-icon">👤</span>
             <input
@@ -56,14 +36,14 @@
         </div>
         
         <button
-          @click="startRegistration"
+          @click="createAccount"
           class="auth-button"
           :disabled="!username || loading"
         >
           <span class="button-content">
             <span v-if="loading" class="loading-indicator"></span>
             <span v-else class="button-icon">✨</span>
-            <span class="button-text">{{ loading ? 'Creating your account...' : 'Create AI Banking Account' }}</span>
+            <span class="button-text">{{ loading ? 'Creating your account...' : 'Create my AI Bank Account' }}</span>
           </span>
           <span class="button-shine"></span>
         </button>
@@ -71,77 +51,12 @@
         <div class="auth-links">
           <p>
             Already have an account? 
-            <NuxtLink to="/login" class="auth-link">Login</NuxtLink>
+            <NuxtLink to="/login" class="auth-link">Sign in</NuxtLink>
           </p>
         </div>
       </div>
       
-      <!-- Step 1: Registration form with seed -->
-      <div v-if="step === 'initial' && registerMethod === 'seed'" class="auth-form">
-        <div class="form-group">
-          <label for="username_seed" class="form-label">Choose Username</label>
-          <div class="input-wrapper">
-            <span class="input-icon">👤</span>
-            <input
-              type="text"
-              id="username_seed"
-              v-model="username"
-              class="form-input"
-              placeholder="Enter a unique username"
-            />
-            <span class="input-focus-effect"></span>
-          </div>
-        </div>
-        
-        <div class="form-group">
-          <label for="existing_seed" class="form-label">XRPL Private Key (Seed)</label>
-          <div class="input-wrapper">
-            <span class="input-icon">🔐</span>
-            <input
-              :type="showExistingSeed ? 'text' : 'password'"
-              id="existing_seed"
-              v-model="existingSeed"
-              class="form-input"
-              placeholder="Enter your XRPL private key"
-            />
-            <button 
-              @click="toggleExistingSeedVisibility" 
-              class="input-action-button"
-            >
-              <span v-if="showExistingSeed" class="eye-icon">👁️</span>
-              <span v-else class="eye-icon">👁️‍🗨️</span>
-            </button>
-            <span class="input-focus-effect"></span>
-          </div>
-        </div>
-        
-        <button
-          @click="registerWithSeed"
-          class="auth-button"
-          :disabled="!username || !existingSeed || loading"
-        >
-          <span class="button-content">
-            <span v-if="loading" class="loading-indicator"></span>
-            <span v-else class="button-icon">💼</span>
-            <span class="button-text">{{ loading ? 'Registering account...' : 'Register with Existing Wallet' }}</span>
-          </span>
-          <span class="button-shine"></span>
-        </button>
-        
-        <div class="seed-warning">
-          <div class="warning-icon">⚠️</div>
-          <p>Never share your private key. This method allows you to register an existing XRPL wallet with our app.</p>
-        </div>
-        
-        <div class="auth-links">
-          <p>
-            Already have an account? 
-            <NuxtLink to="/login" class="auth-link">Login</NuxtLink>
-          </p>
-        </div>
-      </div>
-      
-      <!-- Step 2: Wallet creation confirmation -->
+      <!-- Success: Wallet creation confirmation -->
       <div v-if="step === 'success'" class="success-container">
         <div class="success-header">
           <div class="success-icon">
@@ -149,14 +64,14 @@
             <span>✅</span>
           </div>
           <h2 class="success-title">Account Created!</h2>
-          <p class="success-message">Your AI-powered XRPL Banking account has been successfully activated.</p>
+          <p class="success-message">Your XRPL AI bank account has been successfully activated.</p>
         </div>
 
         <div class="alert-box">
           <div class="alert-icon">⚠️</div>
           <div class="alert-content">
             <h3 class="alert-title">Important Security Note</h3>
-            <p class="alert-message">Store your private key in a secure location. It will never be displayed again and is essential for account recovery.</p>
+            <p class="alert-message">Store your private key in a secure location. It will never be shown again and is essential for account recovery.</p>
           </div>
         </div>
 
@@ -219,24 +134,27 @@
               class="checkbox-input" 
             />
             <span class="checkbox-custom"></span>
-            <span class="checkbox-label">I have securely stored my private key</span>
+            <span class="checkbox-label">I have stored my private key in a safe place</span>
           </label>
           
-          <button 
-            @click="connectToWallet" 
-            class="auth-button"
-            :disabled="!hasBackedUp"
+          <NuxtLink 
+            to="/wallet" 
+            :class="{
+              'auth-button': true,
+              'disabled-link': !hasBackedUp
+            }"
+            @click.prevent="!hasBackedUp && $event.preventDefault()"
           >
             <span class="button-content">
               <span class="button-icon">🏦</span>
-              <span class="button-text">Access My AI Banking Dashboard</span>
+              <span class="button-text">Access my AI Banking Dashboard</span>
             </span>
             <span class="button-shine"></span>
-          </button>
+          </NuxtLink>
         </div>
       </div>
       
-      <!-- Error step -->
+      <!-- Error state -->
       <div v-if="step === 'error'" class="auth-error">
         <div class="error-icon">❌</div>
         <h2 class="error-title">Account Creation Failed</h2>
@@ -254,8 +172,6 @@
 import { ref, onMounted } from 'vue';
 import * as xrpl from 'xrpl';
 
-let client = null;
-
 // Form state
 const username = ref('');
 const loading = ref(false);
@@ -265,116 +181,33 @@ const showSeed = ref(false);
 const hasBackedUp = ref(false);
 const copiedAddress = ref(false);
 const copiedSeed = ref(false);
-const registerMethod = ref('abstraction');
-const existingSeed = ref('');
-const showExistingSeed = ref(false);
 const walletData = ref({
   xrplAddress: '',
   xrplSeed: '',
   username: ''
 });
 
-onMounted(async () => {
-  // Check if user is already registered
+onMounted(() => {
+  // Check if user is already logged in
   const userData = localStorage.getItem('webauthn_user');
   if (userData) {
-    navigateTo('/');
-    return;
-  }
-
-  // Dynamically import WebAuthn library
-  try {
-    const webauthn = await import('@passwordless-id/webauthn');
-    client = webauthn.client;
-  } catch (error) {
-    console.error('Error loading WebAuthn library:', error);
-    step.value = 'error';
-    errorMessage.value = 'Unable to load WebAuthn library';
+    navigateTo('/wallet');
   }
 });
 
-// Function to toggle existing seed visibility
-function toggleExistingSeedVisibility() {
-  showExistingSeed.value = !showExistingSeed.value;
-}
-
-// Register with existing seed
-async function registerWithSeed() {
-  if (!username.value || !existingSeed.value) return;
-  
-  loading.value = true;
-  
-  try {
-    // Validate and connect with the provided seed
-    let wallet;
-    try {
-      wallet = xrpl.Wallet.fromSeed(existingSeed.value.trim());
-    } catch (error) {
-      throw new Error('Invalid seed format. Please check your private key.');
-    }
-    
-    // Try to connect to XRPL to verify the account exists
-    const client = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
-    await client.connect();
-    
-    try {
-      // Get account info to verify it exists
-      const accountInfo = await client.request({
-        command: 'account_info',
-        account: wallet.address,
-        ledger_index: 'validated'
-      });
-      
-      if (!accountInfo.result || !accountInfo.result.account_data) {
-        throw new Error('Account not found on the XRPL network.');
-      }
-      
-      // Set wallet data for display
-      walletData.value = {
-        username: username.value,
-        xrplAddress: wallet.address,
-        xrplSeed: existingSeed.value
-      };
-      
-      // Account exists, create a user object
-      const userData = {
-        username: username.value,
-        credentials: [],  // Empty because we're using seed login
-        xrplAddress: wallet.address,
-        xrplSeed: existingSeed.value,
-        registeredAt: Date.now(),
-        loginMethod: 'seed'
-      };
-      
-      // Store in localStorage
-      localStorage.setItem('webauthn_user', JSON.stringify(userData));
-      
-      // Registration successful, show wallet information
-      step.value = 'success';
-      
-    } catch (error) {
-      console.error('XRPL account verification error:', error);
-      throw new Error('Unable to verify account on XRPL. The account may not exist.');
-    } finally {
-      await client.disconnect();
-    }
-    
-  } catch (error) {
-    console.error('Seed registration error:', error);
-    step.value = 'error';
-    errorMessage.value = error.message || 'An error occurred during registration with seed';
-  } finally {
-    loading.value = false;
-  }
-}
-
-// Start registration process with account abstraction
-async function startRegistration() {
+/**
+ * Create a new XRPL account using account abstraction
+ */
+async function createAccount() {
   if (!username.value) return;
   
   loading.value = true;
   
   try {
+    // Load WebAuthn library dynamically
+    const webauthn = await import('@passwordless-id/webauthn');
+    const client = webauthn.client;
+    
     // 1. Request a challenge from the server
     const response = await fetch('/api/webauthn/challenge', {
       method: 'POST',
@@ -385,7 +218,8 @@ async function startRegistration() {
     });
     
     if (!response.ok) {
-      throw new Error('Error requesting the challenge');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Challenge request failed');
     }
     
     const { challenge } = await response.json();
@@ -411,23 +245,21 @@ async function startRegistration() {
     
     if (!verificationResponse.ok) {
       const errorData = await verificationResponse.json();
-      throw new Error(errorData.message || 'Verification error');
+      throw new Error(errorData.message || 'Verification failed');
     }
     
-    // Get wallet data
+    // Get wallet data from the server response
     const userData = await verificationResponse.json();
-    console.log('Received user data:', userData);  // Debug: Log to see full response data
+    console.log('User data received:', { ...userData, xrplSeed: '[HIDDEN]' });
     
     // Store wallet information
     walletData.value = {
       username: userData.user.username,
       xrplAddress: userData.user.xrplAddress,
-      xrplSeed: userData.xrplSeed || 'Seed not provided'  // Ensure a fallback if seed is missing
+      xrplSeed: userData.xrplSeed || 'Seed not provided'
     };
     
-    console.log('Wallet data set:', walletData.value);  // Debug: Verify wallet data is correct
-    
-    // Store in localStorage
+    // Save to localStorage
     localStorage.setItem('webauthn_user', JSON.stringify({
       username: userData.user.username,
       credentials: userData.user.credentials,
@@ -437,42 +269,21 @@ async function startRegistration() {
       loginMethod: 'abstraction'
     }));
     
-    // Save seed to .env file via API
-    try {
-      const saveSeedResponse = await fetch('/api/saveSeed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: userData.user.username,
-          xrplSeed: userData.xrplSeed
-        }),
-      });
-      
-      if (saveSeedResponse.ok) {
-        console.log('Seed successfully saved to .env file');
-      } else {
-        console.warn('Failed to save seed to .env file, but registration was successful');
-      }
-    } catch (seedError) {
-      console.error('Error saving seed to .env:', seedError);
-      // Continue with registration process even if saving to .env fails
-    }
-    
-    // Registration successful, show wallet information
+    // Success
     step.value = 'success';
     
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Account creation error:', error);
     step.value = 'error';
-    errorMessage.value = error.message || 'An error occurred during registration';
+    errorMessage.value = error.message || 'An error occurred while creating your account';
   } finally {
     loading.value = false;
   }
 }
 
-// Function to copy to clipboard
+/**
+ * Copy text to clipboard
+ */
 async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
@@ -489,18 +300,15 @@ async function copyToClipboard(text) {
       }, 2000);
     }
   } catch (err) {
-    console.error('Error copying to clipboard:', err);
+    console.error('Copy error:', err);
   }
 }
 
-// Function to toggle private key visibility
+/**
+ * Toggle private key visibility
+ */
 function toggleSeedVisibility() {
   showSeed.value = !showSeed.value;
-}
-
-// Function to access wallet
-function connectToWallet() {
-  navigateTo('/wallet');
 }
 </script>
 
@@ -1163,84 +971,6 @@ function connectToWallet() {
   color: var(--accent-light);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-}
-
-.auth-tabs {
-  display: flex;
-  margin-bottom: var(--space-6);
-  border-radius: var(--border-radius);
-  background: rgba(30, 41, 59, 0.3);
-  padding: 2px;
-  position: relative;
-  overflow: hidden;
-}
-
-.tab-button {
-  flex: 1;
-  background: transparent;
-  border: none;
-  padding: var(--space-3);
-  color: var(--gray-300);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  border-radius: calc(var(--border-radius) - 2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-}
-
-.tab-button.active {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--primary-light);
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
-}
-
-.tab-icon {
-  font-size: 1.1rem;
-}
-
-.input-action-button {
-  position: absolute;
-  right: var(--space-3);
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  color: var(--gray-400);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  z-index: 2;
-}
-
-.input-action-button:hover {
-  color: var(--primary-light);
-}
-
-.seed-warning {
-  margin-top: var(--space-4);
-  background: rgba(245, 158, 11, 0.1);
-  border-left: 3px solid var(--warning);
-  padding: var(--space-3);
-  border-radius: var(--border-radius);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.warning-icon {
-  font-size: 1.2rem;
-  margin-top: 2px;
-}
-
-.seed-warning p {
-  color: var(--gray-300);
-  font-size: 0.85rem;
-  margin: 0;
 }
 
 @media (max-width: 640px) {

@@ -1,5 +1,9 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import startServer from "./server/server.js";
+import { Wallet } from "xrpl";
+import { DEFAULT_SEED } from "./core/constants.js";
+import { getXrplClient } from "./core/services/clients.js";
+import { setConnectedWallet } from "./core/state.js";
 // Import tool files to register them
 import "./transactions/connect.js";
 import "./transactions/transfer.js";
@@ -44,6 +48,69 @@ import "./transactions/escrow/create.js";
 import "./transactions/escrow/finish.js";
 import "./transactions/trust/setTrustline.js";
 import "./transactions/ticketCreate.js";
+// Function to automatically connect to XRPL using the seed from .env
+async function connectToXrpl() {
+    if (!DEFAULT_SEED) {
+        console.error("No XRPL_SEED found in .env file, skipping automatic connection");
+        return;
+    }
+    let client = null;
+    try {
+        // Validate seed format before attempting connection
+        let wallet;
+        try {
+            wallet = Wallet.fromSeed(DEFAULT_SEED);
+        }
+        catch (seedError) {
+            console.error("Invalid seed format in .env:", seedError);
+            return;
+        }
+        // Connect only to testnet
+        try {
+            console.error("Connecting to XRPL testnet...");
+            client = await getXrplClient(true); // true = testnet
+            // Store the connected wallet
+            setConnectedWallet(wallet, true);
+            // Fetch account info
+            const accountInfo = await client.request({
+                command: "account_info",
+                account: wallet.address,
+                ledger_index: "validated",
+            });
+            console.error(`Successfully connected to XRPL testnet with wallet: ${wallet.address}`);
+            console.error(`Wallet balance: ${accountInfo.result.account_data.Balance} drops`);
+        }
+        catch (testnetError) {
+            console.error("Testnet connection failed:", testnetError);
+            console.error("The account may not exist on testnet or may not be funded");
+            console.error("Consider creating a new wallet using the connect-to-xrpl tool with useSeedFromEnv=false");
+            // Clean up testnet connection
+            if (client) {
+                try {
+                    await client.disconnect();
+                    client = null;
+                }
+                catch (disconnectError) {
+                    console.error("Error disconnecting from testnet:", disconnectError);
+                }
+            }
+        }
+    }
+    catch (error) {
+        console.error("Error automatically connecting to XRPL:", error);
+    }
+    finally {
+        // Clean up connection if still open and there was an error
+        if (client && client.isConnected()) {
+            try {
+                await client.disconnect();
+            }
+            catch (disconnectError) {
+                console.error("Error disconnecting from XRPL:", disconnectError);
+            }
+        }
+    }
+}
 // Start the server
 async function main() {
     try {
@@ -51,6 +118,8 @@ async function main() {
         const transport = new StdioServerTransport();
         await server.connect(transport);
         console.error("EVM MCP Server running on stdio");
+        // Automatically connect to XRPL network
+        await connectToXrpl();
     }
     catch (error) {
         console.error("Error starting MCP server:", error);

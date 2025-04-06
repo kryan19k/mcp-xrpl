@@ -149,7 +149,7 @@ export default defineEventHandler(async (event) => {
     }
 
     let mcpClient: Client;
-    const MCP_SERVER_PATH = "../../mcp-server/build/index.js"; // Use the same hardcoded path
+    const MCP_SERVER_PATH = "../mcp-server/build/index.js"; // Use the same hardcoded path
 
     try {
         mcpClient = await getMcpClient(MCP_SERVER_PATH);
