@@ -3,7 +3,7 @@
     <div class="container navbar-container">
       <NuxtLink to="/" class="navbar-logo">
         <span class="logo-icon">🤖</span>
-        <span class="logo-text">AI XRPL Bank</span>
+        <span class="logo-text">MCP AI Agent</span>
       </NuxtLink>
       
       <div class="navbar-links">

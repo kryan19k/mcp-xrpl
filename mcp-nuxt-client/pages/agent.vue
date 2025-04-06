@@ -1,6 +1,6 @@
 <template>
     <div class="chat-container">
-        <h1>MCP Nuxt Chat Client</h1>
+        <h1>MCP AI Agent</h1>
 
         <div class="chat-window" ref="chatWindow">
             <div
@@ -519,16 +519,6 @@ h1 {
     color: transparent;
     text-align: center;
     position: relative;
-}
-
-h1::after {
-    content: '';
-    position: absolute;
-    bottom: -8px;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
 }
 
 .chat-window {

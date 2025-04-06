@@ -1,7 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk";
 import type {
     MessageParam,
-    Tool,
     ToolResultBlockParam,
 } from "@anthropic-ai/sdk/resources/messages.mjs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
