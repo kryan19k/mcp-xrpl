@@ -437,29 +437,6 @@ async function startRegistration() {
       loginMethod: 'abstraction'
     }));
     
-    // Save seed to .env file via API
-    try {
-      const saveSeedResponse = await fetch('/api/saveSeed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: userData.user.username,
-          xrplSeed: userData.xrplSeed
-        }),
-      });
-      
-      if (saveSeedResponse.ok) {
-        console.log('Seed successfully saved to .env file');
-      } else {
-        console.warn('Failed to save seed to .env file, but registration was successful');
-      }
-    } catch (seedError) {
-      console.error('Error saving seed to .env:', seedError);
-      // Continue with registration process even if saving to .env fails
-    }
-    
     // Registration successful, show wallet information
     step.value = 'success';
     

@@ -9,6 +9,33 @@ export default defineNuxtConfig({
       typeCheck: true, // Optional: Add type checking during development
   },
 
+  // Optimisations pour éviter les redémarrages fréquents
+  nitro: {
+    preset: 'node-server',
+    routeRules: {
+      '/**': { cors: true }
+    }
+  },
+
+  // Éviter les rechargements sur les fichiers .env
+  watch: [
+    '!**/.env*',
+    '!**/.git/**'
+  ],
+
+  vite: {
+    optimizeDeps: {
+      include: ['xrpl', '@passwordless-id/webauthn']
+    },
+    server: {
+      hmr: {
+        protocol: 'ws',
+        clientPort: 24678,
+        port: 24678
+      }
+    }
+  },
+
   // Make environment variables available server-side
   runtimeConfig: {
       // Private keys are only available on the server

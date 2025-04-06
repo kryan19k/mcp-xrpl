@@ -5,6 +5,8 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "dev:stable": "cross-env NODE_ENV=production NITRO_PRESET=node-server nuxt dev --port 3001 --no-clear-screen",
+    "dev:fast": "nuxt dev --no-watch --max-workers=2",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
@@ -22,6 +24,7 @@
     "xrpl": "^4.2.0"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "vue-tsc": "^2.2.8"
   }
 }

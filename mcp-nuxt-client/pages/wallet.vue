@@ -66,39 +66,8 @@
           </div>
         </div>
       </div>
-      
-      <!-- Transactions Section -->
-      <div class="transactions-section dashboard-card">
-        <div class="card-header">
-          <h3><span class="card-icon">📊</span> Transaction History</h3>
-        </div>
-        
-        <div v-if="transactions.length > 0" class="transactions-list">
-          <div v-for="(tx, index) in realTransactions" :key="index" class="transaction-item">
-            <div class="transaction-icon">
-              <span v-if="tx.type === 'Payment'" class="tx-icon payment">💸</span>
-              <span v-else class="tx-icon">📝</span>
-            </div>
-            <div class="transaction-details">
-              <div class="transaction-type">{{ tx.type }}</div>
-              <div class="transaction-date">{{ formatDate(tx.date) }}</div>
-            </div>
-            <div class="transaction-amount" :class="{'amount-positive': tx.amount > 0}">
-              {{ tx.amount ? tx.amount.toFixed(2) + ' XRP' : 'N/A' }}
-            </div>
-          </div>
-        </div>
-        
-        <div v-else class="no-transactions">
-          <div class="empty-state-icon">🤖</div>
-          <p>Your AI assistant is ready to process your first transaction</p>
-          <button @click="refreshBalance" class="secondary-button small-button">
-            <span class="button-icon">🔄</span>
-            <span>Refresh</span>
-          </button>
-        </div>
-      </div>
-      
+    
+      <!-- AI Assistant Card -->
       <!-- AI Assistant Card -->
       <div class="faucet-card dashboard-card">
         <div class="card-header">
@@ -218,29 +187,6 @@ onMounted(async () => {
     
     // If we have user data, proceed to wallet step
     if (userWallet.value && userWallet.value.xrplAddress) {
-      // Save seed to .env file if it exists
-      if (userWallet.value.xrplSeed) {
-        try {
-          const saveSeedResponse = await fetch('/api/saveSeed', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              username: userWallet.value.username,
-              xrplSeed: userWallet.value.xrplSeed
-            }),
-          });
-          
-          if (saveSeedResponse.ok) {
-            console.log('Seed saved to .env file during page load');
-          }
-        } catch (seedError) {
-          console.error('Error saving seed to .env during page load:', seedError);
-          // Continue with wallet access even if saving to .env fails
-        }
-      }
-      
       step.value = 'wallet';
       
       // Initialize with empty values, not fake data
@@ -321,32 +267,7 @@ async function authenticate() {
       throw new Error(errorData.message || 'Verification error');
     }
     
-    // 4. Save seed to .env file if it exists in user wallet data
-    if (userWallet.value.xrplSeed) {
-      try {
-        const saveSeedResponse = await fetch('/api/saveSeed', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            username: userWallet.value.username,
-            xrplSeed: userWallet.value.xrplSeed
-          }),
-        });
-        
-        if (saveSeedResponse.ok) {
-          console.log('Seed successfully saved to .env file');
-        } else {
-          console.warn('Failed to save seed to .env file');
-        }
-      } catch (seedError) {
-        console.error('Error saving seed to .env:', seedError);
-        // Continue with wallet access even if saving to .env fails
-      }
-    }
-    
-    // 5. Authentication successful, display wallet
+    // 4. Authentication successful, display wallet
     loadingMessage.value = 'Retrieving wallet data...';
     
     // Get wallet balance
@@ -1126,60 +1047,5 @@ async function copyToClipboard(text) {
   .transaction-amount {
     font-size: 0.9rem;
   }
-}
-
-/* AI Chat Button */
-.ai-chat-button {
-  margin-top: var(--space-4);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--border-radius);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  color: white;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  box-shadow: var(--shadow-sm);
-  position: relative;
-  overflow: hidden;
-  font-size: 0.9rem;
-}
-
-.ai-chat-button:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md), var(--glow-primary);
-}
-
-.ai-chat-button::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-  opacity: 0;
-  z-index: 0;
-  transform: scale(0.5);
-  transition: opacity var(--transition), transform var(--transition);
-}
-
-.ai-chat-button:hover::before {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.ai-chat-button .button-icon {
-  font-size: 1.1rem;
-  position: relative;
-  z-index: 1;
-}
-
-.ai-chat-button span {
-  position: relative;
-  z-index: 1;
 }
 </style> 
