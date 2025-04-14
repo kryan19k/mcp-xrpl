@@ -1,4 +1,3 @@
-import { Wallet } from "xrpl";
 import dotenv from "dotenv";
 
 // Load environment variables
