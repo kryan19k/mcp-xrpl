@@ -1,6 +1,8 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { startSSEServer } from "mcp-proxy";
 import startServer from "./server/server.js";
-import { Client, Wallet } from "xrpl";
+import { Client as XrplClient, Wallet } from "xrpl";
 import { DEFAULT_SEED } from "./core/constants.js";
 import { getXrplClient } from "./core/services/clients.js";
 import { setConnectedWallet } from "./core/state.js";
@@ -133,10 +135,30 @@ async function connectToXrpl() {
 // Start the server
 async function main() {
     try {
+        console.error("Starting XRPL MCP Server...");
         const server = await startServer();
-        const transport = new StdioServerTransport();
-        await server.connect(transport);
-        console.error("EVM MCP Server running on stdio");
+
+        console.error("Starting SSE server...");
+        const { close } = await startSSEServer({
+            port: 8080,
+            endpoint: "/sse",
+            createServer: async () => {
+                console.error("Server created, connecting to transport...");
+                const transport = new StdioServerTransport();
+                await server.connect(transport);
+                console.error("Server connected to transport");
+                return server;
+            },
+        });
+
+        console.error("SSE server started successfully");
+
+        // Handle cleanup
+        process.on("SIGINT", async () => {
+            console.error("Shutting down...");
+            await close();
+            process.exit(0);
+        });
 
         // Automatically connect to XRPL network
         await connectToXrpl();

@@ -5,6 +5,6 @@
     "description": "MCP XRPL Wrapper",
     "scripts": {
         "build": "cd mcp-server && npm run build",
-        "start": "cd mcp-server && node build/index.js"
+        "start": "cd mcp-server && npm start"
     }
 }
