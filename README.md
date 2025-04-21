@@ -1,5 +1,7 @@
 # XRP Ledger Model Context Protocol Server
 
+[![MCP Server](https://glama.ai/mcp/servers/%40RomThpt/mcp-xrpl/badge)](https://glama.ai/mcp/servers/%40RomThpt/mcp-xrpl)
+
 License: MIT | XRPL Networks | TypeScript | xrpl.js
 
 A comprehensive Model Context Protocol (MCP) server that provides blockchain services for the XRP Ledger ecosystem. This server enables AI agents to interact with XRPL MainNet, TestNet, and DevNet with a unified interface.
