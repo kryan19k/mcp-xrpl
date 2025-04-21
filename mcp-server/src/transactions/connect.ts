@@ -2,12 +2,19 @@ import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../server/server.js";
 import { getXrplClient } from "../core/services/clients.js";
-import { DEFAULT_SEED, MAINNET_URL, TESTNET_URL } from "../core/constants.js";
+import { MAINNET_URL, TESTNET_URL } from "../core/constants.js";
 import {
     connectedWallet,
     isConnectedToTestnet,
     setConnectedWallet,
 } from "../core/state.js";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
+
+// Get seed from environment or undefined if not set
+const DEFAULT_SEED = process.env.XRPL_SEED;
 
 // Register XRPL connection tool
 server.tool(
@@ -70,7 +77,6 @@ server.tool(
                                 wallet: {
                                     address: wallet.address,
                                     publicKey: wallet.publicKey,
-                                    // Only return seed for newly created wallets
                                     seed:
                                         !useEnvSeed || !DEFAULT_SEED
                                             ? wallet.seed
