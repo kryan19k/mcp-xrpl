@@ -4,10 +4,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export const server = new McpServer({
     name: "xrpl-mcp-server",
     version: "1.0.0",
-    capabilities: {
-        resources: {},
-        tools: {},
-    },
 });
 
 // Default export function that returns the server instance

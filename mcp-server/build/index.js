@@ -1,4 +1,5 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { startSSEServer } from "mcp-proxy";
 import startServer from "./server/server.js";
 import { Wallet } from "xrpl";
 import { DEFAULT_SEED } from "./core/constants.js";
@@ -46,8 +47,31 @@ import "./transactions/payment/payment.js";
 import "./transactions/escrow/cancel.js";
 import "./transactions/escrow/create.js";
 import "./transactions/escrow/finish.js";
+import "./transactions/escrow/tokenCreate.js";
 import "./transactions/trust/setTrustline.js";
 import "./transactions/ticketCreate.js";
+// New XRPL Amendment Features
+// Multi-Purpose Tokens (MPT) - MPTokensV1 amendment
+import "./transactions/mpt/issuanceCreate.js";
+import "./transactions/mpt/issuanceSet.js";
+import "./transactions/mpt/issuanceDestroy.js";
+import "./transactions/mpt/authorize.js";
+import "./transactions/mpt/getInfo.js";
+// Credentials - Credentials amendment
+import "./transactions/credentials/create.js";
+import "./transactions/credentials/accept.js";
+import "./transactions/credentials/delete.js";
+import "./transactions/credentials/getInfo.js";
+// Permissioned Domains - PermissionedDomains amendment
+import "./transactions/permissioned-domains/set.js";
+import "./transactions/permissioned-domains/delete.js";
+import "./transactions/permissioned-domains/getInfo.js";
+// Batch Transactions - BatchTransactions amendment
+import "./transactions/batch/submit.js";
+// Dynamic NFT - DynamicNFT amendment
+import "./transactions/nft/modify.js";
+// Permission Delegation - PermissionDelegation amendment
+import "./transactions/delegation/set.js";
 // Function to automatically connect to XRPL using the seed from .env
 async function connectToXrpl() {
     if (!DEFAULT_SEED) {
@@ -114,10 +138,27 @@ async function connectToXrpl() {
 // Start the server
 async function main() {
     try {
+        console.error("Starting XRPL MCP Server...");
         const server = await startServer();
-        const transport = new StdioServerTransport();
-        await server.connect(transport);
-        console.error("EVM MCP Server running on stdio");
+        console.error("Starting SSE server...");
+        const { close } = await startSSEServer({
+            port: 8080,
+            endpoint: "/sse",
+            createServer: async () => {
+                console.error("Server created, connecting to transport...");
+                const transport = new StdioServerTransport();
+                await server.connect(transport);
+                console.error("Server connected to transport");
+                return server;
+            },
+        });
+        console.error("SSE server started successfully");
+        // Handle cleanup
+        process.on("SIGINT", async () => {
+            console.error("Shutting down...");
+            await close();
+            process.exit(0);
+        });
         // Automatically connect to XRPL network
         await connectToXrpl();
     }
