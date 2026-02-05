@@ -4,8 +4,10 @@
         "xrpl-mcp-server": "./build/index.js"
     },
     "scripts": {
-        "build": "tsc && chmod 755 build/index.js",
-        "start": "npx mcp-proxy --port 8080 --endpoint /sse npx tsx src/index.ts"
+        "build": "tsc",
+        "start": "node build/stdio-server.js",
+        "start:sse": "node build/index.js",
+        "start:dev": "npx tsx src/stdio-server.ts"
     },
     "files": [
         "build"
